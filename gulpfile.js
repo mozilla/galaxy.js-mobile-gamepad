@@ -54,7 +54,8 @@ gulp.task('css-build', function () {
 gulp.task('js-build', function () {
   return browserify({
       entries: paths.build.src.jsApp,
-      debug: process.env.NODE_ENV === 'development'
+      debug: process.env.NODE_ENV === 'development',
+      standalone: 'gamepad'
     })
     .bundle()
     .pipe(source(paths.build.dest.jsApp))
