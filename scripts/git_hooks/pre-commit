@@ -1,0 +1,5 @@
+#!/bin/sh
+
+./node_modules/.bin/gulp symlink-git-hooks  # Update symlinks if necessary.
+
+./node_modules/.bin/gulp  # Minify code, build docs, etc.

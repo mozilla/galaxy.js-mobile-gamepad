@@ -1,0 +1,20 @@
+{
+  "name": "galaxy.js",
+  "main": "galaxy.js",
+  "version": "0.0.1",
+  "homepage": "https://github.com/mozilla/galaxy.js",
+  "authors": [
+    "Christopher Van <cvan@mozilla.com>"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "HTML5-JavaScript-Gamepad-Controller-Library": "kallaspriit/HTML5-JavaScript-Gamepad-Controller-Library@c38f53b"
+  }
+}

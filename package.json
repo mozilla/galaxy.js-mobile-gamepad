@@ -1,0 +1,41 @@
+{
+  "name": "galaxy.js-mobile-gamepad",
+  "version": "0.0.1",
+  "devDependencies": {
+    "browserify": "^5.11.1",
+    "es6-promise": "latest",
+    "gulp": "^3.8.6",
+    "gulp-concat": "^2.3.4",
+    "gulp-jshint": "^1.8.4",
+    "gulp-minify-css": "^0.3.8",
+    "gulp-rename": "^1.2.0",
+    "gulp-serve": "^0.2.0",
+    "gulp-symlink": "^1.1.0",
+    "gulp-uglify": "^0.3.2",
+    "jshint-stylish": "^0.4.0",
+    "vinyl-source-stream": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=0.10.x",
+    "npm": ">=1.1.x"
+  },
+  "keywords": [
+    "controller",
+    "galaxy",
+    "games",
+    "gaming",
+    "gamepad",
+    "mobile",
+    "mozilla",
+    "webrtc",
+    "websockets"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mozilla/galaxy.js-mobile-gamepad.git"
+  },
+  "scripts": {
+    "dev": "NODE_ENV=development ./node_modules/.bin/gulp dev serve-dev",
+    "prod": "NODE_ENV=production gulp prod && gulp serve-prod"
+  }
+}
