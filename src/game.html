@@ -3,9 +3,7 @@
   <head>
   </head>
   <body>
-    <!-- todo: make a separate bundle -->
     <script src="http://cdn.peerjs.com/0.3/peer.js"></script>
-    <!-- <script src="http://cdnjs.cloudflare.com/ajax/libs/zepto/1.1.4/zepto.js"></script> -->
     <script data-galaxy-origin="http://localhost:3000">
       var galaxyOrigin = document.querySelector('[data-galaxy-origin]').dataset.galaxyOrigin || '';
 
@@ -16,7 +14,7 @@
 
         var pairUrl = galaxyOrigin + '/gamepad.html?' + pairId;
 
-        // todo: make a modal.
+        // todo: use modal from galaxy prototype.
         var overlay = document.createElement('div');
         overlay.className = 'overlay';
         overlay.innerHTML = overlayHTML;

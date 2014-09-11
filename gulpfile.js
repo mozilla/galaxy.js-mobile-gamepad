@@ -29,12 +29,12 @@ var paths = {
     dest: {
       css: './src',
       js: './src',
-      jsApp: './bundle.js'
+      jsApp: './bundle-game.js'
     }
   },
   minify: {
     src: {
-      jsApp: './src/bundle.js'
+      jsApp: './src/bundle-game.js'
     },
     dest: {
       css: './dist/css',
