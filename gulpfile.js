@@ -24,22 +24,26 @@ var paths = {
     src: {
       css: ['src/css/**/*.css'],
       js: ['src/js/**/*.js'],
-      jsApp: ['./src/js/main.js']
+      jsApp: ['./src/js/host.js'],
+      jsClient: ['./src/js/client.js']
     },
     dest: {
       css: './src',
       js: './src',
-      jsApp: './bundle-game.js'
+      jsApp: './bundle-host.js',
+      jsClient: './bundle-client.js'
     }
   },
   minify: {
     src: {
-      jsApp: './src/bundle-game.js'
+      jsApp: './src/bundle-host.js',
+      jsClient: './src/bundle-client.js',
     },
     dest: {
       css: './dist/css',
       js: './dist/js',
-      jsAppBasename: 'gamepad.js'
+      jsAppBasename: 'gamepad-host.js',
+      jsClientBasename: 'gamepad-client.js'
     }
   }
 };
@@ -52,13 +56,21 @@ gulp.task('css-build', function () {
 
 
 gulp.task('js-build', function () {
-  return browserify({
+  browserify({
       entries: paths.build.src.jsApp,
       debug: process.env.NODE_ENV === 'development',
       standalone: 'gamepad'
     })
     .bundle()
     .pipe(source(paths.build.dest.jsApp))
+    .pipe(gulp.dest(paths.build.dest.js));
+
+  browserify({
+      entries: paths.build.src.jsClient,
+      debug: process.env.NODE_ENV === 'development'
+    })
+    .bundle()
+    .pipe(source(paths.build.dest.jsClient))
     .pipe(gulp.dest(paths.build.dest.js));
 });
 
@@ -71,9 +83,20 @@ gulp.task('css-minify', ['css-build'], function () {
 
 
 gulp.task('js-minify', ['js-build'], function () {
-  return gulp.src(paths.minify.src.jsApp)
+  gulp.src(paths.minify.src.jsApp)
     .pipe(gulp.modules.rename(function (path) {
       path.basename = paths.minify.dest.jsAppBasename;
+    }))
+    .pipe(gulp.dest(paths.minify.dest.js))  // uncompressed
+    .pipe(gulp.modules.uglify())
+    .pipe(gulp.modules.rename(function (path) {
+      path.extname = '.min.js';
+    }))
+    .pipe(gulp.dest(paths.minify.dest.js));  // minified
+
+  gulp.src(paths.minify.src.jsClient)
+    .pipe(gulp.modules.rename(function (path) {
+      path.basename = paths.minify.dest.jsClientBasename;
     }))
     .pipe(gulp.dest(paths.minify.dest.js))  // uncompressed
     .pipe(gulp.modules.uglify())

@@ -6,6 +6,7 @@ try {
 
 var settings = {
   API_URL: 'http://localhost:5000',  // This URL to the Galaxy API. No trailing slash.
+  DEBUG: false,
   PEER_KEY: 'fcdc4q2kljcq5mi',  // Sign up for a key at http://peerjs.com/peerserver
   VERSION: '0.0.1'  // Version of the `gamepad.js` script
 };
