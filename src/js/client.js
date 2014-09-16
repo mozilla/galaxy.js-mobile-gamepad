@@ -13,7 +13,7 @@ var trace = utils.trace;
 var pins = utils.getPins();
 
 var peer = new Peer(pins.controller, {
-  key: settings.PEER_KEY,
+  key: settings.PEERJS_KEY,
   debug: settings.DEBUG ? 3 : 0
 });
 
