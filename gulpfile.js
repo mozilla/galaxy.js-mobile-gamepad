@@ -28,16 +28,16 @@ var paths = {
       jsClient: ['./src/js/client.js']
     },
     dest: {
-      css: './src',
-      js: './src',
-      jsApp: './bundle-host.js',
-      jsClient: './bundle-client.js'
+      css: './src/css',
+      js: './src/js',
+      jsApp: './host.bundle.js',
+      jsClient: './client.bundle.js'
     }
   },
   minify: {
     src: {
-      jsApp: './src/bundle-host.js',
-      jsClient: './src/bundle-client.js',
+      jsApp: './src/js/host.bundle.js',
+      jsClient: './src/js/client.bundle.js',
     },
     dest: {
       css: './dist/css',
@@ -108,7 +108,7 @@ gulp.task('js-minify', ['js-build'], function () {
 
 
 gulp.task('js-lint', function () {
-  return gulp.src('./src/js/*.js')
+  return gulp.src(['./src/js/*.js', '!**/*.bundle.js'])
     .pipe(gulp.modules.jshint({
       esnext: true
     }))

@@ -1,7 +1,7 @@
 .DS_Store
 .bower_components/
+*.bundle.js
 components/
 node_modules
 npm-debug.log
 settings_local.js
-src/bundle*.js
