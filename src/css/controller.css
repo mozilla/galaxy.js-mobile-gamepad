@@ -377,6 +377,7 @@ body {
 
 .logo {
   font: 1.3em/1 pretendo;
+  letter-spacing: 1px;
   margin: 0 0 3.3rem 2rem;
   cursor: default;
 }
