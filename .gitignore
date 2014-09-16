@@ -3,4 +3,5 @@
 components/
 node_modules
 npm-debug.log
+settings_local.js
 src/bundle*.js
