@@ -58,22 +58,6 @@ var startButton = document.querySelector('#start');
 var bButton = document.querySelector('#b');
 var aButton = document.querySelector('#a');
 
-(function () {
-  'use strict';
-  var i = 0;
-  var padbuttons = dpad.getElementsByClassName('button');
-  var click = function () {
-    dpad.className = this.id;
-    document.onmouseup = function () {
-      dpad.className = '';
-    };
-  };
-
-  for (; i < padbuttons.length; i++) {
-    padbuttons[i].onmousedown = click;
-  }
-}());
-
 
 /**
  * Draw D-pad.
@@ -166,15 +150,20 @@ var gamepadState = {
 };
 
 
-function bindButtonPress(button, eventName, isPressed) {
-  document.querySelector('#' + button).addEventListener(eventName, function () {
+function bindPress(button, eventName, isPressed) {
+  document.querySelector('#' + button).addEventListener(eventName, function (e) {
+    // Handle D-pad presses.
+    if (e.target && e.target.parentNode === dpad) {
+      dpad.classList.toggle(this.id);
+    }
+
     gamepadState[button] = isPressed;
     send(gamepadState);
   });
 }
 
 
-function bindButtonKeyPresses(eventName, isPressed) {
+function bindKeyPresses(eventName, isPressed) {
   document.addEventListener(eventName, function (e) {
     if (utils.fieldFocused(e)) {
       return;
@@ -249,14 +238,14 @@ function bindButtonKeyPresses(eventName, isPressed) {
 
 Object.keys(gamepadState).forEach(function (button) {
   if (utils.hasTouchEvents()) {
-    bindButtonPress(button, 'touchstart', true);
-    bindButtonPress(button, 'touchend', false);
+    bindPress(button, 'touchstart', true);
+    bindPress(button, 'touchend', false);
   } else {
-    bindButtonPress(button, 'mousedown', true);
-    bindButtonPress(button, 'mouseup', false);
+    bindPress(button, 'mousedown', true);
+    bindPress(button, 'mouseup', false);
   }
 });
 
 
-bindButtonKeyPresses('keydown', true);
-bindButtonKeyPresses('keyup', false);
+bindKeyPresses('keydown', true);
+bindKeyPresses('keyup', false);
