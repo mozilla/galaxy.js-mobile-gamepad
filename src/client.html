@@ -1,9 +1,48 @@
 <!doctype html>
 <html>
   <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/controller.css">
   </head>
   <body>
-  	<script src="js/lib/peer.js"></script>
+	  <figure id="pad-traditional">
+      <div class="cord"></div>
+      <section class="dpad-pane">
+        <div class="dpad-hole"></div>
+        <div id="dpad">
+          <canvas height="150" id="dpad-body" width="150"></canvas>
+          <button class="button" id="up"></button>
+          <button class="button" id="right"></button>
+          <button class="button" id="down"></button>
+          <button class="button" id="left"></button>
+        </div>
+      </section>
+      <section class="menu-pane">
+        <div class="labels">
+          <label class="select" for="select">Select
+          </label>
+          <label class="start" for="start">Start</label>
+        </div>
+        <div class="buttons">
+          <button class="button select" id="select">Select</button>
+          <button class="button start" id="start">Start</button>
+        </div>
+      </section>
+      <section class="action-pane">
+        <div class="logo">Mozilla</div>
+        <div class="buttons">
+          <label class="label">
+            B <button class="button" id="b"></button>
+          </label>
+          <label class="label">
+            A <button class="button" id="a"></button>
+          </label>
+        </div>
+      </section>
+    </figure>
+    <script src="js/lib/peer.js"></script>
     <script src="js/lib/promise-1.0.0.js"></script>
     <script src="js/client.bundle.js"></script>
   </body>

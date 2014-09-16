@@ -77,7 +77,10 @@ gulp.task('js-build', function () {
 
 gulp.task('css-minify', ['css-build'], function () {
   return gulp.src(paths.build.src.css)
-    .pipe(gulp.modules['minify-css']({keepBreaks:true}))
+    .pipe(gulp.modules['minify-css']())
+    .pipe(gulp.modules.rename(function (path) {
+      path.extname = '.min.css';
+    }))
     .pipe(gulp.dest(paths.minify.dest.css));
 });
 
