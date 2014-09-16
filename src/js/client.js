@@ -35,25 +35,37 @@ conn.on('open', function () {
     error(err.message);
   });
 
-  conn.send({
+  send({
     status: 'ready'
   });
 });
 
 
+function send(msg) {
+  if (settings.DEBUG) {
+    console.log('Sent: ' + (typeof msg === 'object' ? JSON.stringify(msg) : msg));
+  }
+  conn.send(msg);
+}
+
+
 /**
  * Traditional, NES-inspired gamepad.
  */
+var dpad = document.querySelector('#dpad');
+var selectButton = document.querySelector('#select');
+var startButton = document.querySelector('#start');
+var bButton = document.querySelector('#b');
+var aButton = document.querySelector('#a');
 
 (function () {
   'use strict';
-  var pad = document.getElementById('dpad');
   var i = 0;
-  var padbuttons = pad.getElementsByClassName('button');
+  var padbuttons = dpad.getElementsByClassName('button');
   var click = function () {
-    pad.className = this.id;
+    dpad.className = this.id;
     document.onmouseup = function () {
-      pad.className = '';
+      dpad.className = '';
     };
   };
 
@@ -140,3 +152,111 @@ plus.shadowBlur = 15;
 plus.shadowOffsetX = 20;
 plus.shadowOffsetY = 10;
 plus.fill();
+
+
+var gamepadState = {
+  up: false,
+  right: false,
+  down: false,
+  left: false,
+  select: false,
+  start: false,
+  b: false,
+  a: false
+};
+
+
+function bindButtonPress(button, eventName, isPressed) {
+  document.querySelector('#' + button).addEventListener(eventName, function () {
+    gamepadState[button] = isPressed;
+    send(gamepadState);
+  });
+}
+
+
+function bindButtonKeyPresses(eventName, isPressed) {
+  document.addEventListener(eventName, function (e) {
+    if (utils.fieldFocused(e)) {
+      return;
+    }
+
+    switch (e.keyCode) {
+      case 38:
+        // Send event only once.
+        if (isPressed && gamepadState.up) {
+          return;
+        }
+        gamepadState.up = isPressed;
+        dpad.className = isPressed ? 'up' : '';
+        break;
+      case 39:
+        if (isPressed && gamepadState.right) {
+          return;
+        }
+        gamepadState.right = isPressed;
+        dpad.className = isPressed ? 'right' : '';
+        break;
+      case 40:
+        if (isPressed && gamepadState.down) {
+          return;
+        }
+        gamepadState.down = isPressed;
+        dpad.className = isPressed ? 'down' : '';
+        break;
+      case 37:
+        if (isPressed && gamepadState.left) {
+          return;
+        }
+        gamepadState.left = isPressed;
+        dpad.className = isPressed ? 'left' : '';
+        break;
+      case 13:
+        if (isPressed && gamepadState.start) {
+          return;
+        }
+        gamepadState.start = isPressed;
+        startButton.dataset.pressed = +isPressed;
+        break;
+      case 65:
+        if (isPressed && gamepadState.a) {
+          return;
+        }
+        gamepadState.a = isPressed;
+        aButton.dataset.pressed = +isPressed;
+        break;
+      case 66:
+        if (isPressed && gamepadState.b) {
+          return;
+        }
+        gamepadState.b = isPressed;
+        bButton.dataset.pressed = +isPressed;
+        break;
+      default:
+        if (e.shiftKey || (!isPressed && gamepadState.select)) {
+          // If the Shift key was pressed or unpressed, toggle its state.
+          gamepadState.select = isPressed;
+          selectButton.dataset.pressed = +isPressed;
+        } else {
+          // Otherwise (i.e., any other key was pressed), bail.
+          return;
+        }
+    }
+
+    send(gamepadState);
+  });
+}
+
+
+Object.keys(gamepadState).forEach(function (button) {
+  if (utils.hasTouchEvents()) {
+    bindButtonPress(button, 'touchstart', true);
+    bindButtonPress(button, 'touchend', false);
+  } else {
+    bindButtonPress(button, 'mousedown', true);
+    bindButtonPress(button, 'mouseup', false);
+  }
+});
+
+
+bindButtonKeyPresses('keydown', true);
+bindButtonKeyPresses('keyup', false);

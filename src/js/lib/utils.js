@@ -33,13 +33,37 @@ function getPins() {
 
   // Prepend `controller_` to controller's ID.
   if (pin.substr(0, 11) !== 'controller_') {
-    pins.controller = 'controller_' + pins.controller; 
+    pins.controller = 'controller_' + pins.controller;
   }
 
   return pins;
 }
 
+
+var FIELD_FOCUSED_TAGS = [
+  'input',
+  'keygen',
+  'meter',
+  'option',
+  'output',
+  'progress',
+  'select',
+  'textarea'
+];
+function fieldFocused(e) {
+  return FIELD_FOCUSED_TAGS.indexOf(e.target.nodeName.toLowerCase()) !== -1;
+}
+
+
+function hasTouchEvents() {
+  return ('ontouchstart' in window ||
+    window.DocumentTouch && document instanceof DocumentTouch);
+}
+
+
 module.exports.trace = trace;
 module.exports.error = error;
 module.exports.warn = warn;
 module.exports.getPins = getPins;
+module.exports.fieldFocused = fieldFocused;
+module.exports.hasTouchEvents = hasTouchEvents;
