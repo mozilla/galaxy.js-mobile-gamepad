@@ -1,5 +1,6 @@
 // var peer = require('./lib/peer');
 // var Promise = require('./lib/promise-1.0.0.js');  // jshint ignore:line
+var Modal = require('./lib/modal');
 var settings = require('./settings');
 var utils = require('./lib/utils');
 var error = utils.error;
@@ -8,7 +9,7 @@ var trace = utils.trace;
 
 if (!('performance' in window)) {
   window.performance = {
-    now: function() {
+    now: function () {
       return +new Date();
     }
   };
@@ -40,18 +41,23 @@ function gamepad() {
 
 
 /**
- * Connects to a peer (controller).
+ * Does a handshake with PeerJS' WebSocket server to get a peer ID.
  *
- * Establishes connection with peer.
+ * Once we have the peer ID, we can tell the controller how to find us. Then
+ * all communication between the host and the controller is peer-to-peer via
+ * WebRTC data channels.
  *
+ * @param {String} peerId The peer ID.
  * @returns {Promise}
  * @memberOf gamepad
  */
-gamepad.connectToPeer = function () {
+gamepad.peerHandshake = function (peerId) {
   return new Promise(function (resolve, reject) {
-    var pins = utils.getPins();
+    if (!peerId) {
+      peerId = utils.getPeerId();  // The host ID.
+    }
 
-    var peer = new Peer(pins.host, {
+    var peer = new Peer(peerId, {
       key: settings.PEERJS_KEY,
       debug: settings.DEBUG ? 3 : 0
     });
@@ -60,6 +66,24 @@ gamepad.connectToPeer = function () {
       peer.destroy();
     });
 
+    peer.on('open', function () {
+      trace('My peer ID: ' + peer.id);
+      resolve(peer);
+    });
+  });
+};
+
+
+/**
+ * Listens for a peer connection with the controller via WebRTC data channels.
+ *
+ * If one is given, we will tell PeerJS to use the peer ID the query-string.
+ *
+ * @returns {Promise}
+ * @memberOf gamepad
+ */
+gamepad.peerConnect = function (peer) {
+  return new Promise(function (resolve, reject) {
     peer.on('connection', function (conn) {
       conn.on('data', function (data) {
         trace('Received: ' + (typeof data === 'object' ? JSON.stringify(data) : ''));
@@ -73,45 +97,80 @@ gamepad.connectToPeer = function () {
       // We've connected to a controller.
       resolve(conn);
     });
-
   });
 };
 
-var galaxyOrigin = window.location.origin;
-var dataOrigin = document.querySelector('[data-galaxy-origin]');
-if (dataOrigin && dataOrigin.dataset.galaxyOrigin) {
-  galaxyOrigin = dataset.dataset.galaxyOrigin;
-}
 
+/**
+ * Connects to a peer (controller).
+ *
+ * Establishes connection with peer.
+ *
+ * @returns {Promise}
+ * @memberOf gamepad
+ */
+gamepad.pair = function (peerId) {
+  return new Promise(function (resolve) {
 
-gamepad.showPairingScreen = function (pairId) {
-  return new Promise(function (resolve, reject) {
-    var pairUrl = galaxyOrigin + '/client.html?' + pairId;
+    return gamepad.peerHandshake(peerId).then(function (peer) {
+      var pairId = peer.id;  // This should be the same as `peerId`, but this comes from PeerJS, which is the source of truth.
+      var pairIdEsc = encodeURIComponent(pairId);
+      var pairUrl = galaxyOrigin + '/client.html?' + pairIdEsc;
 
-    // todo: use modal from galaxy prototype.
-    // https://github.com/mozilla/galaxy/tree/48a37a0/src/games/modal
-    var overlay = document.createElement('div');
-    overlay.className = 'overlay';
-    overlay.innerHTML = (
-      '<div class="overlay pair-overlay" id="pair-overlay">' +
-        '<div class="pair">URL: <a href="' + pairUrl + '" class="pair-url" target="_blank">' + pairUrl + '</a></div>' +
-        '<div class="code-heading">Code: <b class="pair-code">' + pairId + '</b></div>' +
-      '</div>'
-    );
+      // Update the querystring in the address bar.
+      window.history.replaceState(null, null, window.location.pathname + '?' + pairIdEsc);
 
-    document.body.appendChild(overlay);
+      var content = (
+        '<div class="overlay pair-overlay" id="pair-overlay">' +
+          '<h2>URL</h2><p><a href="' + pairUrl + '" class="pair-url" target="_blank">' + pairUrl + '</a></p>' +
+          '<h2>Code</h2><p class="pair-code">' + pairIdEsc + '</p>' +
+        '</div>'
+      );
 
-    resolve(overlay);
+      var modal = new Modal({
+        id: 'pairing-screen',
+        classes: 'slim',
+        title: 'Pair your mobile phone',
+        content: content
+      }, true);
+
+      // todo: replace `setTimeout`s with `transitionend` event listeners.
+      setTimeout(function () {
+        // Waiting for the transition to end.
+        modal.open();
+      }, 150);
+
+      [
+        'https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700',
+        '../css/modal.css'
+      ].forEach(function (stylesheet) {
+        utils.injectCSS({href: stylesheet});
+      });
+
+      gamepad.peerConnect(peer).then(function (conn) {
+        console.log('Peer connected');
+        modal.close();
+        resolve(conn);
+      });
+
+    }).catch(console.error.bind(console));
   });
 };
 
 
 gamepad.hidePairingScreen = function () {
-  document.querySelector('#pair-overlay').style.display = 'none';
+  Modal.closeAll();
 };
 
 
 gamepad.version = settings.VERSION;
+
+
+var galaxyOrigin = window.location.origin;
+var dataOrigin = document.querySelector('[data-galaxy-origin]');
+if (dataOrigin) {
+  gamepad.galaxyOrigin = dataOrigin.dataset.galaxyOrigin;
+}
 
 
 module.exports = gamepad;

@@ -111,7 +111,11 @@ gulp.task('js-minify', ['js-build'], function () {
 
 
 gulp.task('js-lint', function () {
-  return gulp.src(['./src/js/*.js', '!**/*.bundle.js'])
+  return gulp.src([
+      './src/js/**/*.js',
+      '!./src/js/external/**/*.js',
+      '!**/*.bundle.js'
+    ])
     .pipe(gulp.modules.jshint({
       esnext: true
     }))

@@ -13,30 +13,9 @@ function warn(text) {
 }
 
 
-function getPins() {
-  var pin = (window.location.pathname.indexOf('.html') ?
+function getPeerId() {
+  return (window.location.pathname.indexOf('.html') ?
     window.location.search.substr(1) : window.location.pathname.substr(1));
-
-  var pins = {
-    host: pin,
-    controller: pin
-  };
-
-  if (!pin) {
-    return pins;
-  }
-
-  // Prepend `host_` to host's ID.
-  if (pin.substr(0, 11) !== 'host_') {
-    pins.host = 'host_' + pins.host;
-  }
-
-  // Prepend `controller_` to controller's ID.
-  if (pin.substr(0, 11) !== 'controller_') {
-    pins.controller = 'controller_' + pins.controller;
-  }
-
-  return pins;
 }
 
 
@@ -60,10 +39,35 @@ function hasTouchEvents() {
     window.DocumentTouch && document instanceof DocumentTouch);
 }
 
+function injectCSS(opts) {
+  var link = document.createElement('link');
+  link.href = opts.href;
+  link.media = 'all';
+  link.rel = 'stylesheet';
+  link.type = 'text/css';
+  Object.keys(opts || {}).forEach(function (prop) {
+    link[prop] = opts[prop];
+  });
+  document.querySelector('head').appendChild(link);
+}
+
+function escape(text) {
+  if (!text) {
+    return text;
+  }
+  return text.replace(/&/g, '&amp;')
+             .replace(/</g, '&lt;')
+             .replace(/>/g, '&gt;')
+             .replace(/'/g, '&#39;')
+             .replace(/"/g, '&#34;');
+}
+
 
 module.exports.trace = trace;
 module.exports.error = error;
 module.exports.warn = warn;
-module.exports.getPins = getPins;
+module.exports.getPeerId = getPeerId;
 module.exports.fieldFocused = fieldFocused;
 module.exports.hasTouchEvents = hasTouchEvents;
+module.exports.injectCSS = injectCSS;
+module.exports.escape = escape;

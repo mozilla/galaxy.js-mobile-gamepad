@@ -10,9 +10,9 @@ var trace = utils.trace;
 // first. instead of relegating mobile to be always a controller, allow the
 // game to mirror the desktop (à la WiiU).
 
-var pins = utils.getPins();
+var peerId = utils.getPeerId();
 
-var peer = new Peer(pins.controller, {
+var peer = new Peer('controller_' + peerId, {
   key: settings.PEERJS_KEY,
   debug: settings.DEBUG ? 3 : 0
 });
@@ -21,7 +21,7 @@ window.addEventListener('beforeunload', function () {
   peer.destroy();
 });
 
-var conn = peer.connect(pins.host);
+var conn = peer.connect(peerId);
 
 conn.on('open', function () {
   trace('My peer ID: ' + peer.id);

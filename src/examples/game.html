@@ -5,19 +5,12 @@
     <meta name="viewport" content="width=device-width">
   </head>
   <body>
-    <script src="../js/lib/peer.js"></script>
-    <script src="../js/lib/promise-1.0.0.js"></script>
+    <script src="../js/external/peer.js"></script>
+    <script src="../js/external/promise-1.0.0.js"></script>
     <script src="../js/host.bundle.js"></script>
     <script>
-      // todo: make sure this resolves when the controller is actually paired!
-      gamepad.connectToPeer().then(function (conn) {
+      gamepad.pair().then(function (conn) {
         console.log('Connected to controller');
-
-        // todo: when we get a message from the peer, dismiss the modal.
-
-        return gamepad.showPairingScreen(conn.peer);
-      }).then(function () {
-
       }).catch(console.error.bind(console));
     </script>
   </body>
