@@ -57,7 +57,7 @@ conn.on('open', function () {
     };
   };
 
-  for (i = 0; i < padbuttons.length; i += 1) {
+  for (; i < padbuttons.length; i++) {
     padbuttons[i].onmousedown = click;
   }
 }());
@@ -75,7 +75,7 @@ function angularShape(canvas, coords) {
   shape.moveTo(coords[0][0], coords[0][1]);
   coords.slice(1);
 
-  for (; i < coords.length; i+=1) {
+  for (; i < coords.length; i++) {
     shape.lineTo(coords[i][0], coords[i][1]);
   }
 
