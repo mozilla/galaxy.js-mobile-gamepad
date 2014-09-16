@@ -42,8 +42,8 @@ var paths = {
     dest: {
       css: './dist/css',
       js: './dist/js',
-      jsAppBasename: 'gamepad-host.js',
-      jsClientBasename: 'gamepad-client.js'
+      jsAppBasename: 'gamepad-host',
+      jsClientBasename: 'gamepad-client'
     }
   }
 };
@@ -123,7 +123,7 @@ gulp.task('symlink-git-hooks', function () {
 });
 
 
-gulp.task('dev', ['css-build', 'js-build', 'js-lint'], function () {
+gulp.task('dev', ['default', 'js-lint'], function () {
   gulp.watch(paths.build.src.css, ['css-build']);
   gulp.watch(paths.build.src.js, ['js-build', 'js-lint']);
 });
