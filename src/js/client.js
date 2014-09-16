@@ -17,8 +17,11 @@ var peer = new Peer(pins.controller, {
   debug: settings.DEBUG ? 3 : 0
 });
 
-var conn = peer.connect(pins.host);
+window.addEventListener('beforeunload', function () {
+  peer.destroy();
+});
 
+var conn = peer.connect(pins.host);
 
 conn.on('open', function () {
   trace('My peer ID: ' + peer.id);

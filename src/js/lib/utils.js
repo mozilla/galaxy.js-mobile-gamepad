@@ -18,12 +18,12 @@ function getPins() {
     window.location.search.substr(1) : window.location.pathname.substr(1));
 
   var pins = {
-  	host: pin,
-  	controller: pin
+    host: pin,
+    controller: pin
   };
 
   if (!pin) {
-  	return pins;
+    return pins;
   }
 
   // Prepend `host_` to host's ID.

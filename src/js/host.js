@@ -56,23 +56,24 @@ gamepad.connectToPeer = function () {
       debug: settings.DEBUG ? 3 : 0
     });
 
-    var conn = peer.connect(pins.controller);
+    window.addEventListener('beforeunload', function () {
+      peer.destroy();
+    });
 
-    conn.on('open', function () {
-      trace('My peer ID: ' + peer.id);
-      trace('My connection ID: ' + conn.id);
-
+    peer.on('connection', function (conn) {
       conn.on('data', function (data) {
-        trace('Received: ' + data);
+        trace('Received: ' + (typeof data === 'object' ? JSON.stringify(data) : ''));
       });
 
+      conn.on('error', function (err) {
+        error(err.message);
+        reject(err);
+      });
+
+      // We've connected to a controller.
       resolve(conn);
     });
 
-    conn.on('error', function (err) {
-      error(err.message);
-      reject(err);
-    });
   });
 };
 
