@@ -6,15 +6,16 @@
 }
 
 .md-modal {
-  position: fixed;
-  top: 50%;
+  font-family: "Source Sans Pro", "Helvetica Neue", sans-serif;
+  height: auto;
   left: 50%;
-  width: 50%;
   max-width: 630px;
   min-width: 320px;
-  height: auto;
-  z-index: 2000;
+  position: fixed;
+  top: 50%;
   visibility: hidden;
+  width: 50%;
+  z-index: 2000;
   -webkit-backface-visibility: hidden;
   -moz-backface-visibility: hidden;
   backface-visibility: hidden;
@@ -72,7 +73,6 @@
 
 /* TODO: Use an iframe to overlay over the entire page so as to not infer with the game's styles. */
 .galaxy-overlayed {
-  font-family: "Source Sans Pro", "Helvetica Neue", sans-serif;
   overflow: hidden;  /* Disable scrolling on the body when a modal is opened. */
 }
 
