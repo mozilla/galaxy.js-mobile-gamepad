@@ -97,11 +97,11 @@
   border-radius: 3px 3px 0 0;
   border-top: 1px solid rgba(255,255,255,.35);
   color: #fff;
-  font-size: 2.4em;
+  font-size: 38px;
   font-weight: 300;
   margin: 0;
   opacity: 0.8;
-  padding: 0.4em;
+  padding: 12px;
   text-align: center;
 }
 
@@ -274,4 +274,14 @@
 
 .galaxy-overlayed .hidden {
   display: none;
+}
+
+/* For Mario example (until we introduce the iframe in issue #35) */
+.md-modal {
+  font-size: inherit;
+  text-transform: none;
+}
+
+.md-content h3 {
+  padding: 24px 12px;
 }

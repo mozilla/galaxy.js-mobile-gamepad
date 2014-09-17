@@ -139,7 +139,7 @@ gulp.task('prod', ['default']);
 
 
 gulp.task('serve', gulp.modules.serve({
-  root: 'src',
+  root: ['src', 'dist'],
   port: process.env.PORT
 }));
 

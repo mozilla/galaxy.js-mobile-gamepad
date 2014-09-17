@@ -142,7 +142,7 @@ gamepad.pair = function (peerId) {
 
       [
         'https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700',
-        '../css/modal.css'
+        '/css/modal.css'  // todo: do not hardcode absolute path
       ].forEach(function (stylesheet) {
         utils.injectCSS({href: stylesheet});
       });
