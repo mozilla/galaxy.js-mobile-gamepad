@@ -6,6 +6,40 @@ var error = utils.error;
 var trace = utils.trace;
 
 
+utils.lockOrientation('landscape-primary');
+
+function wantsAutoFullScreen() {
+  return !('disableAutoFullScreen' in localStorage);
+}
+
+
+document.addEventListener('keyup', function (e) {
+  if (utils.fieldFocused(e)) {
+    return;
+  }
+
+  switch (e.keyCode) {
+    case 70:  // Pressing F should toggle full-screen mode.
+      trace('User pressed "F"; entering/exiting fullscreen');
+      return utils.toggleFullScreen();
+    case 78:  // Pressing NF (really just N) should toggle full-screen mode.
+      trace('User pressed "NF"; exiting fullscreen and will not automatically ' +
+        'open next time');
+      localStorage.disableAutoFullScreen = '1';
+      return utils.toggleFullScreen();
+  }
+});
+
+
+document.addEventListener('click', function (e) {
+  if (utils.fieldFocused(e) || !wantsAutoFullScreen()) {
+    return;
+  }
+  trace('Automatically entering fullscreen');
+  utils.toggleFullScreen();
+});
+
+
 // if there's not a pin, tell the user to open the game on another device
 // first. instead of relegating mobile to be always a controller, allow the
 // game to mirror the desktop (à la WiiU).

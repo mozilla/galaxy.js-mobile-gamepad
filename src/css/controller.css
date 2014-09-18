@@ -11,12 +11,21 @@
 }
 
 * {
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
   font: inherit;
 }
 
-body {
+html, body {
   background: #000;
-  font: 15px/2 NESController, sans-serif;
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font: 15px/2 NESControl;
+  overflow: hidden;
 }
 
 .button {

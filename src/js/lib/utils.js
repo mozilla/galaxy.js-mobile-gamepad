@@ -62,6 +62,52 @@ function escape(text) {
              .replace(/"/g, '&#34;');
 }
 
+function isFullScreen() {
+  return (!document.fullscreenElement &&  // standard method
+    !document.mozFullScreenElement &&
+    !document.webkitFullscreenElement &&
+    !document.msFullscreenElement);  // vendor-prefixed methods
+}
+
+function toggleFullScreen() {
+  if (isFullScreen()) {
+    trace('Entering full screen');
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen();
+    } else if (document.documentElement.mozRequestFullScreen) {
+      document.documentElement.mozRequestFullScreen();
+    } else if (document.documentElement.webkitRequestFullscreen) {
+      document.documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+    } else if (document.documentElement.msRequestFullscreen) {
+      document.documentElement.msRequestFullscreen();
+    }
+  } else {
+    trace('Exiting full screen');
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.mozCancelFullScreen) {
+      document.mozCancelFullScreen();
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    } else if (document.msExitFullscreen) {
+      document.msExitFullscreen();
+    }
+  }
+}
+
+
+function lockOrientation() {
+  var lo = (screen.LockOrientation ||
+    screen.mozLockOrientation ||
+    screen.webkitLockOrientation ||
+    screen.msLockOrientation);
+  if (!lo) {
+    return warn('Orientation could not be locked');
+  }
+
+  lo(orientation);
+}
+
 
 module.exports.trace = trace;
 module.exports.error = error;
@@ -71,3 +117,6 @@ module.exports.fieldFocused = fieldFocused;
 module.exports.hasTouchEvents = hasTouchEvents;
 module.exports.injectCSS = injectCSS;
 module.exports.escape = escape;
+module.exports.isFullScreen = isFullScreen;
+module.exports.toggleFullScreen = toggleFullScreen;
+module.exports.lockOrientation = lockOrientation;
