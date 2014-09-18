@@ -11,6 +11,11 @@
     <script>
       gamepad.pair().then(function (conn) {
         console.log('Connected to controller');
+
+        // todo: in addition to providing generic events
+        // (e.g., buttonpress/buttonup) and specific targets (à la selectors)
+
+        gamepad.bind('buttonpress');
       }).catch(console.error.bind(console));
     </script>
   </body>

@@ -109,6 +109,14 @@ function lockOrientation() {
 }
 
 
+function triggerEvent(type) {
+  var event = document.createEvent('HTMLEvents');
+  event.initEvent(type, true, true);
+  event.eventName = type;
+  (document.body || window).dispatchEvent(event);
+}
+
+
 module.exports.trace = trace;
 module.exports.error = error;
 module.exports.warn = warn;
@@ -120,3 +128,4 @@ module.exports.escape = escape;
 module.exports.isFullScreen = isFullScreen;
 module.exports.toggleFullScreen = toggleFullScreen;
 module.exports.lockOrientation = lockOrientation;
+module.exports.triggerEvent = triggerEvent;
