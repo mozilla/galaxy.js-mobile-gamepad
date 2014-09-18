@@ -245,6 +245,7 @@ Gamepad.prototype.unbind = function (eventName, listener) {
   }
 
   this.listeners[eventName].forEach(function (value) {
+    // Remove only the listener function passed to this method.
     if (value === listener) {
       this.listeners[eventName].splice(i, 1);
       return true;
