@@ -27,6 +27,8 @@ if (('origin' in window.location)) {
  * @namespace gamepad
  */
 function gamepad() {
+  this.listeners = {};
+  this.state = {};
 }
 
 
@@ -86,6 +88,7 @@ gamepad.peerConnect = function (peer) {
   return new Promise(function (resolve, reject) {
     peer.on('connection', function (conn) {
       conn.on('data', function (data) {
+        gamepad._updateState(data);
         trace('Received: ' + (typeof data === 'object' ? JSON.stringify(data) : ''));
       });
 
@@ -158,8 +161,106 @@ gamepad.pair = function (peerId) {
 };
 
 
+gamepad._updateState = function (data) {
+  Object.keys(data || {}).forEach(function (key) {
+    if (!state[key] && data[key]) {
+      // button pushed.
+      gamepad._emit('buttondown', key);
+      gamepad._emit(key + 'buttondown', true);
+    } else if (state[key] && !data[key]) {
+      // button released.
+      gamepad._emit('buttonup', key);
+      gamepad._emit(key + 'buttonup', true);
+    }
+  });
+};
+
+
 gamepad.hidePairingScreen = function () {
   Modal.closeAll();
+};
+
+
+/**
+ * Fires an internal event with given data.
+ *
+ * @method _fire
+ * @param {String} eventName Name of event to fire (e.g., `buttondown`).
+ * @param {*} data Data to pass to the listener.
+ * @private
+ */
+gamepad._emit = function (eventName, data) {
+  console.log(eventName, data);
+  (this.listeners[eventName] || []).forEach(function (listener) {
+    listener.apply(listener, [data]);
+  });
+};
+
+
+/**
+ * Binds a listener to a gamepad event.
+ *
+ * @method bind
+ * @param {String} eventName Event to bind to (e.g., `buttondown`).
+ * @param {Function} listener Listener to call when given event occurs.
+ * @return {Gamepad} Self
+ */
+gamepad._bind = function (eventName, listener) {
+  if (typeof(this.listeners[event]) === 'undefined') {
+    this.listeners[event] = [];
+  }
+
+  this.listeners[event].push(listener);
+
+  return this;
+};
+
+
+/**
+ * Removes listener of given type.
+ *
+ * If no type is given, all listeners are removed. If no listener is given, all
+ * listeners of given type are removed.
+ *
+ * @method unbind
+ * @param {String} [type] Type of listener to remove.
+ * @param {Function} [listener] (Optional) The listener function to remove.
+ * @return {Boolean} Was unbinding the listener successful.
+ */
+Gamepad.prototype.unbind = function (eventName, listener) {
+  // Remove everything for all event types.
+  if (typeof eventName === 'undefined') {
+    this.listeners = {};
+    return;
+  }
+
+  // Remove all listener functions for that event type.
+  if (typeof listener === 'undefined') {
+    this.listeners[eventName] = [];
+    return;
+  }
+
+  if (typeof this.listeners[eventName] === 'undefined') {
+    return false;
+  }
+
+  this.listeners[eventName].forEach(function (value) {
+    if (value === listener) {
+      this.listeners[eventName].splice(i, 1);
+      return true;
+    }
+  });
+
+  return false;
+};
+
+
+
+// todo: these are mapped directly to NES controller. fix this.
+gamepad.buttons = {
+  a: {
+    clicked: gamepad._bind
+  }
 };
 
 
