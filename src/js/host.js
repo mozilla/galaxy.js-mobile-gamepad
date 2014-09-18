@@ -121,7 +121,7 @@ gamepad.pair = function (peerId) {
       window.history.replaceState(null, null, window.location.pathname + '?' + pairIdEsc);
 
       var content = (
-        '<div class="overlay pair-overlay" id="pair-overlay">' +
+        '<div class="modal-inner modal-pair">' +
           '<h2>URL</h2><p><a href="' + pairUrl + '" class="pair-url" target="_blank">' + pairUrl + '</a></p>' +
           '<h2>Code</h2><p class="pair-code">' + pairIdEsc + '</p>' +
         '</div>'

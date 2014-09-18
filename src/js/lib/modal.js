@@ -37,6 +37,7 @@ Modal.prototype.html = function () {
   var d = document.createElement('div');
   d.id = 'modal-' + this.id;
   d.className = 'md-modal md-effect-1 ' + (this.classes || '');
+  d.style.display = 'none';
   d.innerHTML = (
     '<div class="md-content">' +
       '<h3>' + utils.escape(this.title) + '</h3> ' +
@@ -51,6 +52,7 @@ Modal.prototype.inject = function () {
   Modal.injectOverlay();
 
   this.el = this.html();
+  this.el.style.display = 'block';
 
   document.body.appendChild(this.el);
   document.body.classList.add('galaxy-overlayed');
