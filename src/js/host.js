@@ -160,17 +160,17 @@ gamepad.pair = function (peerId) {
 
 
 gamepad._updateState = function (data) {
-  Object.keys(data || {}).forEach(function (key) {
-    if (!state[key] && data[key]) {
-      // button pushed.
-      gamepad._emit('buttondown', key);
-      gamepad._emit(key + 'buttondown', true);
-    } else if (state[key] && !data[key]) {
-      // button released.
-      gamepad._emit('buttonup', key);
-      gamepad._emit(key + 'buttonup', true);
-    }
-  });
+ Object.keys(data || {}).forEach(function (key) {
+   if (!this.state[key] && data[key]) {
+     // Button pushed.
+     gamepad._emit('buttondown', key);
+     gamepad._emit('buttondown.' + key, key);
+   } else if (this.state[key] && !data[key]) {
+     // Button released.
+     gamepad._emit('buttonup', key);
+     gamepad._emit('buttonup.' + key, key);
+   }
+ }.bind(this));
 };
 
 
@@ -188,7 +188,6 @@ gamepad.hidePairingScreen = function () {
  * @private
  */
 gamepad._emit = function (eventName, data) {
-  console.log(eventName, data);
   (this.listeners[eventName] || []).forEach(function (listener) {
     listener.apply(listener, [data]);
   });
@@ -242,10 +241,10 @@ Gamepad.prototype.unbind = function (eventName, listener) {
     return false;
   }
 
-  this.listeners[eventName].forEach(function (value) {
+  this.listeners[eventName].forEach(function (value, idx) {
     // Remove only the listener function passed to this method.
     if (value === listener) {
-      this.listeners[eventName].splice(i, 1);
+      this.listeners[eventName].splice(idx, 1);
       return true;
     }
   });
