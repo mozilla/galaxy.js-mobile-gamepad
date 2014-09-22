@@ -1,3 +1,6 @@
+(function (window, document) {
+'use strict';
+
 // var peer = require('./lib/peer');
 // var Promise = require('./lib/promise-1.0.0');  // jshint ignore:line
 var settings = require('./settings');
@@ -281,3 +284,6 @@ Object.keys(gamepadState).forEach(function (button) {
 
 bindKeyPresses('keydown', true);
 bindKeyPresses('keyup', false);
+
+
+})(window, document);

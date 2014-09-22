@@ -1,3 +1,6 @@
+(function (window, document) {
+'use strict';
+
 // var peer = require('./lib/peer');
 // var Promise = require('./lib/promise-1.0.0.js');  // jshint ignore:line
 var Modal = require('./lib/modal');
@@ -17,9 +20,11 @@ utils.polyfill(window);
  * @namespace gamepad
  */
 function gamepad() {
-  this.listeners = {};
-  this.state = {};
 }
+
+
+gamepad.listeners = {};
+gamepad.state = {};
 
 
 /**
@@ -136,7 +141,7 @@ gamepad.pair = function (peerId) {
       }, true);
 
       // todo: replace `setTimeout`s with `transitionend` event listeners.
-      setTimeout(function () {
+      window.setTimeout(function () {
         // Waiting for the transition to end.
         modal.open();
       }, 150);
@@ -273,3 +278,5 @@ if (dataOrigin) {
 
 
 module.exports = gamepad;
+
+})(window, document);
