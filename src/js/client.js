@@ -6,8 +6,10 @@ var error = utils.error;
 var trace = utils.trace;
 
 
-utils.lockOrientation('landscape-primary');
+utils.polyfill(window);
 
+
+utils.lockOrientation('landscape-primary');
 function wantsAutoFullScreen() {
   return !('disableAutoFullScreen' in localStorage);
 }

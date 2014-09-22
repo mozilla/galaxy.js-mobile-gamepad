@@ -13,6 +13,21 @@ function warn(text) {
 }
 
 
+function polyfill(win) {
+  if (!('performance' in win)) {
+    win.performance = {
+      now: function () {
+        return +new Date();
+      }
+    };
+  }
+
+  if (('origin' in win.location)) {
+    win.location.origin = win.location.protocol + '//' + win.location.host;
+  }
+}
+
+
 function getPeerId() {
   return (window.location.pathname.indexOf('.html') ?
     window.location.search.substr(1) : window.location.pathname.substr(1));
@@ -120,6 +135,7 @@ function triggerEvent(type) {
 module.exports.trace = trace;
 module.exports.error = error;
 module.exports.warn = warn;
+module.exports.polyfill = polyfill;
 module.exports.getPeerId = getPeerId;
 module.exports.fieldFocused = fieldFocused;
 module.exports.hasTouchEvents = hasTouchEvents;

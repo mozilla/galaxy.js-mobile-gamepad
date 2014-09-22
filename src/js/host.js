@@ -7,17 +7,7 @@ var error = utils.error;
 var trace = utils.trace;
 
 
-if (!('performance' in window)) {
-  window.performance = {
-    now: function () {
-      return +new Date();
-    }
-  };
-}
-
-if (('origin' in window.location)) {
-  window.location.origin = window.location.protocol + '//' + window.location.host;
-}
+utils.polyfill(window);
 
 
 /**
