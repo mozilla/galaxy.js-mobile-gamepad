@@ -70,10 +70,6 @@ conn.on('open', function () {
   conn.on('error', function (err) {
     error(err.message);
   });
-
-  send({
-    status: 'ready'
-  });
 });
 
 
@@ -194,7 +190,7 @@ function bindPress(button, eventName, isPressed) {
     }
 
     gamepadState[button] = isPressed;
-    send(gamepadState);
+    send({type: 'state', data: gamepadState});
   });
 }
 

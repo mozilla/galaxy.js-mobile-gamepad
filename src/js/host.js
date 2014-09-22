@@ -78,7 +78,15 @@ gamepad.peerConnect = function (peer) {
   return new Promise(function (resolve, reject) {
     peer.on('connection', function (conn) {
       conn.on('data', function (data) {
-        gamepad._updateState(data);
+        switch (data.type) {
+          case 'state':
+            gamepad._updateState(data.data);
+            break;
+          default:
+            console.warn('WebRTC message received of unknown type: "' + data.type + '"');
+            break;
+        }
+
         trace('Received: ' + (typeof data === 'object' ? JSON.stringify(data) : ''));
       });
 
