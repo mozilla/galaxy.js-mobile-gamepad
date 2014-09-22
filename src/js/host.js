@@ -28,16 +28,6 @@ gamepad.state = {};
 
 
 /**
- * 1. Your PC connects to the server.
- * 2. The server gives your PC a randomly generated number and remembers the combination of number and PC.
- * 3. From your mobile device, specify a number and connect to the server.
- * 4. If the number specified is the same as from a connected PC, your mobile device is paired with that PC.
- * 5. If there is no designated PC, an error occurs.
- * 6. When data comes in from your mobile device, it is sent to the PC with which it is paired, and vice versa.
- */
-
-
-/**
  * Does a handshake with PeerJS' WebSocket server to get a peer ID.
  *
  * Once we have the peer ID, we can tell the controller how to find us. Then
