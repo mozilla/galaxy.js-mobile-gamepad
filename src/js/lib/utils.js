@@ -1,6 +1,13 @@
 module.exports = function (window, document) {
 'use strict';
 
+if (!window) {
+  throw new Error('window required');
+}
+if (!document) {
+  throw new Error('document required');
+}
+
 function trace(text, level) {
   console[level || 'log'](
     (window.performance.now() / 1000).toFixed(3) + ': ' + text);
@@ -26,7 +33,7 @@ function polyfill() {
     };
   }
 
-  if (('origin' in window.location)) {
+  if (!('origin' in window.location)) {
     window.location.origin = (window.location.protocol + '//' +
       window.location.host);
   }
@@ -60,6 +67,7 @@ function hasTouchEvents() {
 }
 
 function injectCSS(opts) {
+  console.log('link');
   var link = document.createElement('link');
   link.href = opts.href;
   link.media = 'all';

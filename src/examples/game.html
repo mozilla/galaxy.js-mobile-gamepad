@@ -9,13 +9,15 @@
     <script src="../js/external/promise-1.0.0.js"></script>
     <script src="../js/host.bundle.js"></script>
     <script>
-      gamepad.pair().then(function (conn) {
+
+      var pad = gamepad.init();
+
+      pad.pair().then(function (conn) {
         console.log('Connected to controller');
 
-        // todo: in addition to providing generic events
-        // (e.g., buttonpress/buttonup) and specific targets (à la selectors)
-
-        gamepad.bind('buttonpress');
+        pad.on('buttonpress', function () {
+          console.log('');
+        });
       }).catch(console.error.bind(console));
     </script>
   </body>

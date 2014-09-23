@@ -16,15 +16,21 @@ function Modal(opts, inject) {
 }
 
 Modal.closeAll = Modal.prototype.close = function () {
-  // Close any open modal.
-  var openedModal = document.querySelector('.md-show');
-  if (openedModal) {
+  return new Promise(function (resolve, reject) {
+    var openedModal = document.querySelector('.md-show');
+    if (!openedModal) {
+      return reject();
+    }
+
+    // Close any open modal.
     openedModal.classList.remove('md-show');
-  }
-  // TODO: Wait until transition end.
-  setTimeout(function () {
-    document.body.classList.remove('galaxy-overlayed');
-  }, 150);
+
+    // TODO: Wait until transition end.
+    setTimeout(function () {
+      document.body.classList.remove('galaxy-overlayed');
+      resolve();
+    }, 150);
+  });
 };
 
 Modal.injectOverlay = function () {
