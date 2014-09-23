@@ -26,7 +26,7 @@ function polyfill() {
     };
   }
 
-  if (('origin' in window.location)) {
+  if (!('origin' in window.location)) {
     window.location.origin = (window.location.protocol + '//' +
       window.location.host);
   }
