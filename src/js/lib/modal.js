@@ -1,3 +1,6 @@
+module.exports = function (window, document) {
+'use strict';
+
 var utils = require('./utils');
 
 
@@ -65,4 +68,6 @@ Modal.prototype.open = function () {
 };
 
 
-module.exports = Modal;
+return Modal;
+
+};

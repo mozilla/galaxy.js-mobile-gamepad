@@ -3,14 +3,14 @@
 
 // var peer = require('./lib/peer');
 // var Promise = require('./lib/promise-1.0.0.js');  // jshint ignore:line
-var Modal = require('./lib/modal');
+var Modal = require('./lib/modal')(window, document);
 var settings = require('./settings');
-var utils = require('./lib/utils');
+var utils = require('./lib/utils')(window, document);
 var error = utils.error;
 var trace = utils.trace;
 
 
-utils.polyfill(window);
+utils.polyfill();
 
 
 /**
@@ -39,12 +39,12 @@ gamepad.state = {};
  * @memberOf gamepad
  */
 gamepad.peerHandshake = function (peerId) {
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve) {
     if (!peerId) {
       peerId = utils.getPeerId();  // The host ID.
     }
 
-    var peer = new Peer(peerId, {
+    var peer = new window.Peer(peerId, {
       key: settings.PEERJS_KEY,
       debug: settings.DEBUG ? 3 : 0
     });
@@ -78,11 +78,13 @@ gamepad.peerConnect = function (peer) {
             gamepad._updateState(data.data);
             break;
           default:
-            console.warn('WebRTC message received of unknown type: "' + data.type + '"');
+            console.warn(
+              'WebRTC message received of unknown type: "' + data.type + '"');
             break;
         }
 
-        trace('Received: ' + (typeof data === 'object' ? JSON.stringify(data) : ''));
+        trace('Received: ' +
+          (typeof data === 'object' ? JSON.stringify(data) : ''));
       });
 
       conn.on('error', function (err) {
@@ -109,16 +111,20 @@ gamepad.pair = function (peerId) {
   return new Promise(function (resolve) {
 
     return gamepad.peerHandshake(peerId).then(function (peer) {
-      var pairId = peer.id;  // This should be the same as `peerId`, but this comes from PeerJS, which is the source of truth.
+      // `pairId` should be the same as `peerId`,
+      // but `peer.id` is the source of truth.
+      var pairId = peer.id;
       var pairIdEsc = encodeURIComponent(pairId);
       var pairUrl = galaxyOrigin + '/client.html?' + pairIdEsc;
 
       // Update the querystring in the address bar.
-      window.history.replaceState(null, null, window.location.pathname + '?' + pairIdEsc);
+      window.history.replaceState(null, null,
+        window.location.pathname + '?' + pairIdEsc);
 
       var content = (
         '<div class="modal-inner modal-pair">' +
-          '<h2>URL</h2><p><a href="' + pairUrl + '" class="pair-url" target="_blank">' + pairUrl + '</a></p>' +
+          '<h2>URL</h2><p><a href="' + pairUrl +
+            '" class="pair-url" target="_blank">' + pairUrl + '</a></p>' +
           '<h2>Code</h2><p class="pair-code">' + pairIdEsc + '</p>' +
         '</div>'
       );
@@ -219,7 +225,7 @@ gamepad._bind = function (eventName, listener) {
  * @param {Function} [listener] (Optional) The listener function to remove.
  * @return {Boolean} Was unbinding the listener successful.
  */
-Gamepad.prototype.unbind = function (eventName, listener) {
+gamepad.prototype.unbind = function (eventName, listener) {
   // Remove everything for all event types.
   if (typeof eventName === 'undefined') {
     this.listeners = {};

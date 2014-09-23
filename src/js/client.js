@@ -9,7 +9,7 @@ var error = utils.error;
 var trace = utils.trace;
 
 
-utils.polyfill(window);
+utils.polyfill();
 
 
 utils.lockOrientation('landscape-primary');
@@ -28,8 +28,8 @@ document.addEventListener('keyup', function (e) {
       trace('User pressed "F"; entering/exiting fullscreen');
       return utils.toggleFullScreen();
     case 78:  // Pressing NF (really just N) should toggle full-screen mode.
-      trace('User pressed "NF"; exiting fullscreen and will not automatically ' +
-        'open next time');
+      trace('User pressed "NF"; exiting fullscreen and will not ' +
+        'automatically open next time');
       localStorage.disableAutoFullScreen = '1';
       return utils.toggleFullScreen();
   }
@@ -51,7 +51,7 @@ document.addEventListener('click', function (e) {
 
 var peerId = utils.getPeerId();
 
-var peer = new Peer('controller_' + peerId, {
+var peer = new window.Peer('controller_' + peerId, {
   key: settings.PEERJS_KEY,
   debug: settings.DEBUG ? 3 : 0
 });
@@ -78,7 +78,8 @@ conn.on('open', function () {
 
 function send(msg) {
   if (settings.DEBUG) {
-    console.log('Sent: ' + (typeof msg === 'object' ? JSON.stringify(msg) : msg));
+    console.log('Sent: ' +
+      (typeof msg === 'object' ? JSON.stringify(msg) : msg));
   }
   conn.send(msg);
 }
@@ -115,7 +116,8 @@ function angularShape(canvas, coords) {
 }
 
 function linearFill(shape, color1, color2, coords) {
-  var bg = shape.createLinearGradient(coords[0], coords[1], coords[2], coords[3]);
+  var bg = shape.createLinearGradient(coords[0], coords[1], coords[2],
+    coords[3]);
   bg.addColorStop(0, color1);
   bg.addColorStop(1, color2);
   shape.fillStyle = bg;
@@ -186,15 +188,16 @@ var gamepadState = {
 
 
 function bindPress(button, eventName, isPressed) {
-  document.querySelector('#' + button).addEventListener(eventName, function (e) {
-    // Handle D-pad presses.
-    if (e.target && e.target.parentNode === dpad) {
-      dpad.classList.toggle(this.id);
-    }
+  document.querySelector('#' + button)
+    .addEventListener(eventName, function (e) {
+      // Handle D-pad presses.
+      if (e.target && e.target.parentNode === dpad) {
+        dpad.classList.toggle(this.id);
+      }
 
-    gamepadState[button] = isPressed;
-    send({type: 'state', data: gamepadState});
-  });
+      gamepadState[button] = isPressed;
+      send({type: 'state', data: gamepadState});
+    });
 }
 
 

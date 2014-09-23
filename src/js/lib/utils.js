@@ -1,5 +1,9 @@
+module.exports = function (window, document) {
+'use strict';
+
 function trace(text, level) {
-  console[level || 'log']((window.performance.now() / 1000).toFixed(3) + ': ' + text);
+  console[level || 'log'](
+    (window.performance.now() / 1000).toFixed(3) + ': ' + text);
 }
 
 
@@ -13,17 +17,18 @@ function warn(text) {
 }
 
 
-function polyfill(win) {
-  if (!('performance' in win)) {
-    win.performance = {
+function polyfill() {
+  if (!('performance' in window)) {
+    window.performance = {
       now: function () {
         return +new Date();
       }
     };
   }
 
-  if (('origin' in win.location)) {
-    win.location.origin = win.location.protocol + '//' + win.location.host;
+  if (('origin' in window.location)) {
+    window.location.origin = (window.location.protocol + '//' +
+      window.location.host);
   }
 }
 
@@ -51,7 +56,7 @@ function fieldFocused(e) {
 
 function hasTouchEvents() {
   return ('ontouchstart' in window ||
-    window.DocumentTouch && document instanceof DocumentTouch);
+    window.DocumentTouch && document instanceof window.DocumentTouch);
 }
 
 function injectCSS(opts) {
@@ -92,7 +97,8 @@ function toggleFullScreen() {
     } else if (document.documentElement.mozRequestFullScreen) {
       document.documentElement.mozRequestFullScreen();
     } else if (document.documentElement.webkitRequestFullscreen) {
-      document.documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+      document.documentElement.webkitRequestFullscreen(
+        Element.ALLOW_KEYBOARD_INPUT);
     } else if (document.documentElement.msRequestFullscreen) {
       document.documentElement.msRequestFullscreen();
     }
@@ -111,16 +117,16 @@ function toggleFullScreen() {
 }
 
 
-function lockOrientation() {
-  var lo = (screen.LockOrientation ||
-    screen.mozLockOrientation ||
-    screen.webkitLockOrientation ||
-    screen.msLockOrientation);
+function lockOrientation(orientation) {
+  var lo = (window.screen.LockOrientation ||
+    window.screen.mozLockOrientation ||
+    window.screen.webkitLockOrientation ||
+    window.screen.msLockOrientation);
   if (!lo) {
     return warn('Orientation could not be locked');
   }
 
-  lo(orientation);
+  return lo(orientation);
 }
 
 
@@ -132,16 +138,20 @@ function triggerEvent(type) {
 }
 
 
-module.exports.trace = trace;
-module.exports.error = error;
-module.exports.warn = warn;
-module.exports.polyfill = polyfill;
-module.exports.getPeerId = getPeerId;
-module.exports.fieldFocused = fieldFocused;
-module.exports.hasTouchEvents = hasTouchEvents;
-module.exports.injectCSS = injectCSS;
-module.exports.escape = escape;
-module.exports.isFullScreen = isFullScreen;
-module.exports.toggleFullScreen = toggleFullScreen;
-module.exports.lockOrientation = lockOrientation;
-module.exports.triggerEvent = triggerEvent;
+return {
+  trace: trace,
+  error: error,
+  warn: warn,
+  polyfill: polyfill,
+  getPeerId: getPeerId,
+  fieldFocused: fieldFocused,
+  hasTouchEvents: hasTouchEvents,
+  injectCSS: injectCSS,
+  escape: escape,
+  isFullScreen: isFullScreen,
+  toggleFullScreen: toggleFullScreen,
+  lockOrientation: lockOrientation,
+  triggerEvent: triggerEvent
+};
+
+};
