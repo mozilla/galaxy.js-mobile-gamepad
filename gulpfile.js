@@ -130,9 +130,9 @@ gulp.task('symlink-git-hooks', function () {
 });
 
 
-gulp.task('dev', ['default', 'js-lint'], function () {
+gulp.task('dev', ['build'], function () {
   gulp.watch(paths.build.src.css, ['css-build']);
-  gulp.watch(paths.build.src.js, ['js-build', 'js-lint']);
+  gulp.watch(paths.build.src.js, ['js-build']);
 });
 
 gulp.task('prod', ['default']);
@@ -151,4 +151,10 @@ gulp.task('serve-prod', gulp.modules.serve({
 }));
 
 
-gulp.task('default', ['css-minify', 'js-minify']);
+gulp.task('build', ['js-lint', 'css-build', 'js-build']);
+
+
+gulp.task('minify', ['js-lint', 'css-minify', 'js-minify']);
+
+
+gulp.task('default', ['minify']);
