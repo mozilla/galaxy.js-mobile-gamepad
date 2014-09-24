@@ -1,4 +1,5 @@
 var exec = require('child_process').exec;
+var path = require('path');
 
 var gulp = require('gulp');
 gulp.modules = {};
@@ -14,35 +15,37 @@ gulp.modules = {};
   gulp.modules[name] = require('gulp-' + name);
 });
 
-var browserify = require('browserify');
+var duo = require('duo');
 var stylish = require('jshint-stylish');
-var source = require('vinyl-source-stream');
+var mapStream = require('map-stream');
 
 
+var src = 'src';
 var paths = {
+  src: src,
   build: {
     src: {
-      css: ['src/css/**/*.css'],
-      js: ['src/js/**/*.js'],
-      jsApp: ['./src/js/host.js'],
-      jsClient: ['./src/js/client.js']
+      css: [src + '/css/**/*.css'],
+      js: [src + '/js/**/*.js'],
+      jsHost: [src + '/js/host.js'],
+      jsClient: [src + '/js/client.js']
     },
     dest: {
-      css: './src/css',
-      js: './src/js',
-      jsApp: './host.bundle.js',
+      css: src + '/css',
+      js: src + '/js',
+      jsHost: './host.bundle.js',
       jsClient: './client.bundle.js'
     }
   },
   minify: {
     src: {
-      jsApp: './src/js/host.bundle.js',
-      jsClient: './src/js/client.bundle.js',
+      jsHost: src + '/js/host.bundle.js',
+      jsClient: src + '/js/client.bundle.js',
     },
     dest: {
       css: './dist/css',
       js: './dist/js',
-      jsAppBasename: 'gamepad-host',
+      jsHostBasename: 'gamepad-host',
       jsClientBasename: 'gamepad-client'
     }
   }
@@ -56,22 +59,19 @@ gulp.task('css-build', function () {
 
 
 gulp.task('js-build', function () {
-  browserify({
-      entries: paths.build.src.jsApp,
-      debug: process.env.NODE_ENV === 'development',
-      standalone: 'gamepad'
-    })
-    .bundle()
-    .pipe(source(paths.build.dest.jsApp))
-    .pipe(gulp.dest(paths.build.dest.js));
+  gulp.src(paths.build.src.jsHost)
+    .pipe(duoify())
+    .pipe(gulp.modules.rename(function (path) {
+      path.extname = '.bundle.js';
+    }))
+    .pipe(gulp.dest(paths.build.dest.js));  // Write to `host.bundle.js`.
 
-  browserify({
-      entries: paths.build.src.jsClient,
-      debug: process.env.NODE_ENV === 'development'
-    })
-    .bundle()
-    .pipe(source(paths.build.dest.jsClient))
-    .pipe(gulp.dest(paths.build.dest.js));
+  gulp.src(paths.build.src.jsClient)
+    .pipe(duoify())
+    .pipe(gulp.modules.rename(function (path) {
+      path.extname = '.bundle.js';
+    }))
+    .pipe(gulp.dest(paths.build.dest.js));  // Write to `client.bundle.js`.
 });
 
 
@@ -86,14 +86,16 @@ gulp.task('css-minify', ['css-build'], function () {
 
 
 gulp.task('js-minify', ['js-build'], function () {
-  gulp.src(paths.minify.src.jsApp)
+  gulp.src(paths.minify.src.jsHost)
     .pipe(gulp.modules.rename(function (path) {
-      path.basename = paths.minify.dest.jsAppBasename;
+      path.basename = paths.minify.dest.jsHostBasename;
     }))
     .pipe(gulp.dest(paths.minify.dest.js))  // uncompressed
     .pipe(gulp.modules.uglify())
     .pipe(gulp.modules.rename(function (path) {
+      console.log(path);
       path.extname = '.min.js';
+      console.log(path);
     }))
     .pipe(gulp.dest(paths.minify.dest.js));  // minified
 
@@ -112,8 +114,8 @@ gulp.task('js-minify', ['js-build'], function () {
 
 gulp.task('js-lint', function () {
   return gulp.src([
-      './src/js/**/*.js',
-      '!./src/js/external/**/*.js',
+      src + '/js/**/*.js',
+      '!' + src + '/js/external/**/*.js',
       '!**/*.bundle.js'
     ])
     .pipe(gulp.modules.jshint({
@@ -132,7 +134,7 @@ gulp.task('symlink-git-hooks', function () {
 
 gulp.task('dev', ['build'], function () {
   gulp.watch(paths.build.src.css, ['css-build']);
-  gulp.watch(paths.build.src.js, ['js-build']);
+  gulp.watch(paths.build.src.js, ['js-lint', 'js-build']);
 });
 
 gulp.task('prod', ['default']);
@@ -158,3 +160,19 @@ gulp.task('minify', ['js-lint', 'css-minify', 'js-minify']);
 
 
 gulp.task('default', ['minify']);
+
+
+function duoify() {
+  return mapStream(function (file, func) {
+    duo(path.join(__dirname, paths.src))
+      .entry(file.path)
+      .run(function (err, src) {
+        if (err) {
+          return func(err);
+        }
+
+        file.contents = new Buffer(src);
+        func(null, file);
+      });
+  });
+}

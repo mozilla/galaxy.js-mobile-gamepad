@@ -1,8 +1,9 @@
 (function (window, document) {
 'use strict';
 
-// var peer = require('./lib/peer');
-// var Promise = require('./lib/promise-1.0.0.js');  // jshint ignore:line
+var Peer = window.Peer;  // require('./external/peer');
+var Promise = require('./external/promise-1.0.0.js');  // jshint ignore:line
+
 var Modal = require('./lib/modal')(window, document);
 var settings = require('./settings');
 var utils = require('./lib/utils')(window, document);
@@ -44,7 +45,7 @@ gamepad.peerHandshake = function (peerId) {
       peerId = utils.getPeerId();  // The host ID.
     }
 
-    var peer = new window.Peer(peerId, {
+    var peer = new Peer(peerId, {
       key: settings.PEERJS_KEY,
       debug: settings.DEBUG ? 3 : 0
     });
@@ -272,7 +273,6 @@ if (dataOrigin) {
   gamepad.galaxyOrigin = dataOrigin.dataset.galaxyOrigin;
 }
 
-
-module.exports = gamepad;
+window.gamepad = gamepad;
 
 })(window, document);
