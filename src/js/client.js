@@ -4,7 +4,7 @@
 // var peer = require('./lib/peer');
 // var Promise = require('./lib/promise-1.0.0');  // jshint ignore:line
 var settings = require('./settings');
-var utils = require('./lib/utils');
+var utils = require('./lib/utils')(window, document);
 var error = utils.error;
 var trace = utils.trace;
 
