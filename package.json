@@ -2,7 +2,9 @@
   "name": "galaxy.js-mobile-gamepad",
   "version": "0.0.1",
   "dependencies": {
-    "plink-server": "^0.1.0"
+    "plink-server": "^0.1.0",
+    "plink": "^0.1.0",
+    "its": "^1.0.2"
   },
   "devDependencies": {
     "browserify": "^5.11.1",
@@ -16,8 +18,7 @@
     "gulp-uglify": "^1.0.1",
     "jshint-stylish": "^0.4.0",
     "uglifyify": "^2.5.0",
-    "vinyl-source-stream": "^1.0.0",
-    "plink": "^0.1.0"
+    "vinyl-source-stream": "^1.0.0"
   },
   "engines": {
     "node": ">=0.10.x",
@@ -40,6 +41,7 @@
   },
   "scripts": {
     "dev": "NODE_ENV=development ./node_modules/.bin/gulp dev serve-dev",
-    "prod": "NODE_ENV=production gulp prod && gulp serve-prod"
+    "prod": "NODE_ENV=production gulp prod && gulp serve-prod",
+    "signalling-server": "./node_modules/plink-server/bin/plink-server"
   }
 }

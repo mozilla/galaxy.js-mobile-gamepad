@@ -1,12 +1,14 @@
 (function (window, document) {
 'use strict';
 
-// var peer = require('./lib/peer');
-// var Promise = require('./lib/promise-1.0.0');  // jshint ignore:line
+var Plink = require('plink');
+// var Promise = require('./external/promise-1.0.0');  // jshint ignore:line
+
 var settings = require('./settings');
 var utils = require('./lib/utils')(window, document);
 var error = utils.error;
 var trace = utils.trace;
+var warn = utils.warn;
 
 
 utils.polyfill();
@@ -42,7 +44,8 @@ document.addEventListener('keyup', function (e) {
 document.addEventListener('click', function (e) {
   // Bail if input is focussed, if we have autofocus disabled, or
   // if we're already fullscreen.
-  if (utils.fieldFocused(e) || !wantsAutoFullScreen() || utils.isFullScreen()) {
+  if (utils.fieldFocused(e) || !wantsAutoFullScreen() ||
+      utils.isFullScreen()) {
     return;
   }
   trace('Automatically entering fullscreen');
@@ -50,43 +53,99 @@ document.addEventListener('click', function (e) {
 });
 
 
-// if there's not a pin, tell the user to open the game on another device
+// TODO: if there's not a pin, tell the user to open the game on another device
 // first. instead of relegating mobile to be always a controller, allow the
 // game to mirror the desktop (à la WiiU).
 
-var peerId = utils.getPeerId();
 
-var peer = new window.Peer('controller_' + peerId, {
-  key: settings.PEERJS_KEY,
-  debug: settings.DEBUG ? 3 : 0
-});
+// Create a root `plink` instance.
+function connect() {
+  return new Promise(function (resolve, reject) {
+    var plink = Plink.create();
 
-window.addEventListener('beforeunload', function () {
-  peer.destroy();
-});
+    // Get the key (from the path or query string).
+    var peerKey = utils.getPeerKey();
+    trace('Peer key: ' + peerKey);
 
-var conn = peer.connect(peerId);
+    trace('Attempting to connect to host');
 
-conn.on('open', function () {
-  trace('My peer ID: ' + peer.id);
-  trace('My connection ID: ' + conn.id);
+    // Connect to `plink-server` and await connection using the peer ID.
+    var link = plink.connect(settings.WS_URL);
 
-  conn.on('data', function (data) {
-    trace('Received: ' + data);
+    // Set a key. Other peers can use to connect to this browser using this
+    // key via the connected `plink-server`.
+    // (This returns a Promise on whether the operation succeeded.)
+    link.useKey(peerKey);
+
+    link.on('connection', function (peer) {
+      trace('[' + peer.address + '] Connected');
+
+      peer.on('message', function (msg) {
+        trace('[' + peer.address + '] Received message: ' +
+          (typeof msg === 'object' ? JSON.stringify(msg) : msg));
+      });
+
+      peer.on('open', function () {
+        trace('[' + peer.address + '] Opened');
+        resolve(peer);
+      });
+
+      peer.on('close', function () {
+        // Connection lost with host.
+        // TODO: Reconnect to host (#61).
+        trace('[' + peer.address + '] Closed');
+      });
+
+      peer.on('error', function (err) {
+        error('[' + peer.address + '] Error: ' +
+          (typeof err === 'object' ? JSON.stringify(err) : err));
+        reject(err);
+      });
+
+    }).on('close', function () {
+      // TODO: Reconnect to signalling server (#60).
+      warn('Connection lost with signalling server');
+    }).on('error', function (err) {
+      error('Could not connect to `plink-server`: ' +
+        JSON.stringify(err));
+      reject(err);
+    });
   });
+}
 
-  conn.on('error', function (err) {
-    error(err.message);
-  });
+connect().then(function (peer) {
+  // Swap out the `send` function with one that does actual sending.
+  send = function send(msg) {
+    trace('[' + peer.address + '] Sent message: ' +
+      (typeof msg === 'object' ? JSON.stringify(msg) : msg));
+    peer.send(msg);
+  };
+
+  // Send any queued messages.
+  while (queue.length) {
+    send(queue.pop());
+  }
+
+  // TODO: Queue messages again if we later lose connection to host (#65).
+}).catch(function (err) {
+  console.trace(err.stack ? err.stack : err);
 });
 
+var queue = [];  // A queue for messages to send once we connect to host.
 
 function send(msg) {
-  if (settings.DEBUG) {
-    console.log('Sent: ' +
-      (typeof msg === 'object' ? JSON.stringify(msg) : msg));
+  // Turn a single message into an array of messages.
+  if (!Array.isArray(msg)) {
+    msg = [msg];
   }
-  conn.send(msg);
+
+  // Queueing messages if we are not yet connected to host.
+  msg.forEach(function (msg) {
+    trace('Queued message: ' +
+      (typeof msg === 'object' ? JSON.stringify(msg) : msg));
+    // Prepend each message so we can treat the array like a queue.
+    queue.unshift(msg);
+  });
 }
 
 
@@ -274,7 +333,7 @@ function bindKeyPresses(eventName, isPressed) {
         }
     }
 
-    send(gamepadState);
+    send({type: 'state', data: gamepadState});
   });
 }
 

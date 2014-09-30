@@ -6,12 +6,26 @@ try {
 } catch (e) {
 }
 
+var utils = require('./lib/utils')(window, document);
+
+
+utils.polyfill();
+
 
 var settings = {
-  API_URL: 'http://localhost:5000',  // Galaxy API URL. No trailing slash.
+  // Origin of Galaxy server hosting the gamepad files
+  // (e.g., iframe, controller, etc.).
+  // No trailing slash.
+  GAMEPAD_ORIGIN: window.location.origin,
+
+  // Signalling server API. (Protocol should be `wss://` in prod.)
+  WS_URL: 'ws://' + location.hostname + ':20500/',
+
+  // Debug mode (verbose logging, etc.). (Should be `false` in prod.)
   DEBUG: false,
-  PEERJS_KEY: '',  // Sign up for a key at http://peerjs.com/peerserver
-  VERSION: '0.0.1'  // Version of the `gamepad.js` script
+
+  // Version of the `gamepad.js` script
+  VERSION: '0.0.1'
 };
 
 // Override each default setting with user-defined setting.

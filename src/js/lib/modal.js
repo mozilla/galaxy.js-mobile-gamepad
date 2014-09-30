@@ -1,7 +1,7 @@
 module.exports = function (window, document) {
 'use strict';
 
-var utils = require('./utils');
+var utils = require('./utils')(window, document);
 
 
 function Modal(opts, inject) {
@@ -16,6 +16,7 @@ function Modal(opts, inject) {
 }
 
 Modal.closeAll = Modal.prototype.close = function () {
+  utils.trace('Closed overlay');
   // Close any open modal.
   var openedModal = document.querySelector('.md-show');
   if (openedModal) {
@@ -28,6 +29,7 @@ Modal.closeAll = Modal.prototype.close = function () {
 };
 
 Modal.injectOverlay = function () {
+  utils.trace('Injected overlay');
   // Inject the overlay we use for overlaying it behind modals.
   if (!document.querySelector('.md-overlay')) {
     var d = document.createElement('div');
@@ -37,6 +39,7 @@ Modal.injectOverlay = function () {
 };
 
 Modal.prototype.html = function () {
+  utils.trace('Created modal DOM');
   var d = document.createElement('div');
   d.id = 'modal-' + this.id;
   d.className = 'md-modal md-effect-1 ' + (this.classes || '');
@@ -55,16 +58,24 @@ Modal.prototype.inject = function () {
   Modal.injectOverlay();
 
   this.el = this.html();
-  this.el.style.display = 'block';
+
+  // TODO: Replace `setTimeout`s with `transitionend` event listeners (#33).
+  window.setTimeout(function () {
+    this.el.style.display = 'block';
+  }.bind(this), 150);
 
   document.body.appendChild(this.el);
   document.body.classList.add('galaxy-overlayed');
+
+  utils.trace('Injected modal');
 
   return this.el;
 };
 
 Modal.prototype.open = function () {
-  this.el.classList.add('md-show');
+  return new Promise(function () {
+    return this.el.classList.add('md-show');
+  }.bind(this));
 };
 
 
