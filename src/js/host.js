@@ -155,7 +155,9 @@ gamepad.pair = function (peerId) {
         resolve(conn);
       });
 
-    }).catch(console.error.bind(console));
+    }).catch(function (e) {
+      console.trace(e.stack);
+    });
   });
 };
 
