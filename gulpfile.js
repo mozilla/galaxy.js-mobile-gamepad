@@ -1,5 +1,3 @@
-var exec = require('child_process').exec;
-
 var gulp = require('gulp');
 gulp.modules = {};
 [
@@ -112,15 +110,16 @@ gulp.task('js-minify', ['js-build'], function () {
 
 gulp.task('js-lint', function () {
   return gulp.src([
+      '*.js',
       './src/js/**/*.js',
       '!./src/js/external/**/*.js',
       '!**/*.bundle.js'
     ])
-    .pipe(gulp.modules.jshint({
-      esnext: true
-    }))
+    .pipe(gulp.modules.jshint())
     .pipe(gulp.modules.jshint.reporter(stylish));
 });
+
+gulp.task('js-hint', ['js-lint']);
 
 
 gulp.task('symlink-git-hooks', function () {
