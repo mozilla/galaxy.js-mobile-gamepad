@@ -27,8 +27,18 @@ To use custom settings for your local setup, first over a settings file:
 
 Any value specified in `src/js/settings_local.js` will override the defaults in `src/js/settings.js`.
 
+To recreate the whole experience locally, if you haven't already, make sure you install all of the Node dependencies:
+
+    npm install
+
+This will install [__onramp__](https://github.com/oztu/onram), a simple Node-based WebSocket server which is used, in junction with [__P__](https://github.com/oztu/p) (a simple peer-to-peer browser library that wraps WebRTC), as a signalling server for WebRTC connections.
+
 
 ## Development
+
+Ensure you have installed the Node dependencies:
+
+    npm install
 
 To rebuild (compile and minify) the scripts while developing and serve the files from :
 
