@@ -7,8 +7,15 @@ Used in conjunction with [galaxy.js](https://github.com/mozilla/galaxy.js).
 
 ## Downloads
 
-* [gamepad.js](https://raw.githubusercontent.com/mozilla/galaxy.js-mobile-gamepad/master/dist/js/gamepad.js)
-* [gamepad.min.js](https://raw.githubusercontent.com/mozilla/galaxy.js-mobile-gamepad/master/dist/js/gamepad.min.js)
+### Client
+
+* [gamepad-client.js](https://raw.githubusercontent.com/mozilla/galaxy.js-mobile-gamepad/master/dist/js/gamepad-client.js)
+* [gamepad-client.min.js](https://raw.githubusercontent.com/mozilla/galaxy.js-mobile-gamepad/master/dist/js/gamepad-client.min.js)
+
+### Host
+
+* [gamepad-host.js](https://raw.githubusercontent.com/mozilla/galaxy.js-mobile-gamepad/master/dist/js/gamepad-host.js)
+* [gamepad-host.min.js](https://raw.githubusercontent.com/mozilla/galaxy.js-mobile-gamepad/master/dist/js/gamepad-host.min.js)
 
 
 ## Installation
@@ -40,7 +47,7 @@ Ensure you have installed the Node dependencies:
 
     npm install
 
-To rebuild (compile and minify) the scripts while developing and serve the files from :
+To rebuild (compile and minify) the scripts while developing and serve the files from a local server:
 
     npm run-script dev
 
@@ -48,11 +55,16 @@ Alternatively:
 
     NODE_ENVIRONMENT='development' gulp dev serve
 
+
+## Distribution
+
+To build the files for distribution:
+
+    gulp dist
+
 Several files will be written to the `dist/` directory, including the main application file (uncompressed and minified):
 
-* [gamepad.js](https://raw.githubusercontent.com/mozilla/galaxy.js-mobile-gamepad/master/dist/js/gamepad.js)
-* [gamepad.min.js](https://raw.githubusercontent.com/mozilla/galaxy.js-mobile-gamepad/master/dist/js/gamepad.min.js)
-
-Alternatively, to rebuild and minify all the files just once (for a release, for instance):
-
-    gulp
+* [gamepad-client.js](https://raw.githubusercontent.com/mozilla/galaxy.js-mobile-gamepad/master/dist/js/gamepad-client.js)
+* [gamepad-client.min.js](https://raw.githubusercontent.com/mozilla/galaxy.js-mobile-gamepad/master/dist/js/gamepad-client.min.js)
+* [gamepad-host.js](https://raw.githubusercontent.com/mozilla/galaxy.js-mobile-gamepad/master/dist/js/gamepad-host.js)
+* [gamepad-host.min.js](https://raw.githubusercontent.com/mozilla/galaxy.js-mobile-gamepad/master/dist/js/gamepad-host.min.js)
