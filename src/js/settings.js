@@ -16,7 +16,7 @@ var settings = {
 
 // Override each default setting with user-defined setting.
 Object.keys(settings_local).forEach(function (key) {
-	settings[key] = settings_local[key];
+  settings[key] = settings_local[key];
 });
 
 
