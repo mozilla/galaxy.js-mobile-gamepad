@@ -1,9 +1,10 @@
+'use strict';
+
 var browserify = require('browserify');
 var gulp = require('gulp');
 var stylish = require('jshint-stylish');
 var source = require('vinyl-source-stream');
 
-var concat = require('gulp-concat');
 var jshint = require('gulp-jshint');
 var minifyCSS = require('gulp-minify-css');
 var rename = require('gulp-rename');
@@ -19,7 +20,12 @@ var paths = {
   build: {
     src: {
       css: [src + '/css/**/*.css'],
-      js: [src + '/js/**/*.js'],
+      js: [
+        '*.js',
+        src + '/js/**/*.js',
+        '!' + src + '/js/external/**/*.js',
+        '!**/*.bundle.js'
+      ],
       jsHost: ['./js/host.js'],
       jsClient: ['./js/client.js']
     },
@@ -85,7 +91,7 @@ gulp.task('js-build-client', function () {
 });
 
 
-gulp.task('css-dist', [], function () {
+gulp.task('css-dist', function () {
   // TODO: concatenate multiple CSS files.
   return gulp.src(paths.build.src.css)
     .pipe(minifyCSS())
@@ -103,7 +109,7 @@ gulp.task('js-dist', [
   'js-dist-client-min'
 ]);
 
-gulp.task('js-dist-host-raw', ['js-build'], function (jsBuild, _) {
+gulp.task('js-dist-host-raw', ['js-build'], function () {
   // // Write to `dist/js/gamepad-host.js`.
   return bundlify(paths.build.src.jsHost, 'gamepad')
     .bundle()
@@ -111,7 +117,7 @@ gulp.task('js-dist-host-raw', ['js-build'], function (jsBuild, _) {
     .pipe(gulp.dest(paths.dist.raw.js));
 });
 
-gulp.task('js-dist-client-raw', [], function () {
+gulp.task('js-dist-client-raw', function () {
   // Write to `dist/js/gamepad-client.js`.
   return bundlify(paths.build.src.jsClient)
     .bundle()
@@ -119,7 +125,7 @@ gulp.task('js-dist-client-raw', [], function () {
     .pipe(gulp.dest(paths.dist.raw.js));
 });
 
-gulp.task('js-dist-host-min', [], function () {
+gulp.task('js-dist-host-min', function () {
   // Write to `dist/js/gamepad-host.min.js`.
   var hostBundle = bundlify(paths.build.src.jsHost, 'gamepad');
 
@@ -134,7 +140,7 @@ gulp.task('js-dist-host-min', [], function () {
     .pipe(gulp.dest(paths.dist.min.js));
 });
 
-gulp.task('js-dist-client-min', [], function () {
+gulp.task('js-dist-client-min', function () {
   // Write to `dist/js/gamepad-client.min.js`.
   var clientBundle = bundlify(paths.build.src.jsClient);
 
@@ -150,12 +156,7 @@ gulp.task('js-dist-client-min', [], function () {
 
 
 gulp.task('js-lint', function () {
-  return gulp.src([
-      '*.js',
-      src + '/js/**/*.js',
-      '!' + src + '/js/external/**/*.js',
-      '!**/*.bundle.js'
-    ])
+  return gulp.src(paths.build.src.js)
     .pipe(jshint())
     .pipe(jshint.reporter(stylish));
 });
