@@ -31,7 +31,7 @@ To recreate the whole experience locally, if you haven't already, make sure you 
 
     npm install
 
-This will install [__onramp__](https://github.com/oztu/onram), a simple Node-based WebSocket server which is used, in junction with [__P__](https://github.com/oztu/p) (a simple peer-to-peer browser library that wraps WebRTC), as a signalling server for WebRTC connections.
+This will install [__plink-server__](https://github.com/oztu/plink-server), a simple Node-based WebSocket server which is used as a signalling server in junction with [__plink__](https://github.com/oztu/plink) (a simple client-side library for WebRTC channels).
 
 
 ## Development
