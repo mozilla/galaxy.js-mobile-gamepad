@@ -1,5 +1,5 @@
 /*!
- * 
+ *
  *  HTML5 Keen
  *  https://github.com/JoeAnzalone/HTML5-Keen
  *  By Joe Anzalone & Steven Anzalone
@@ -109,7 +109,7 @@ var g_resources = [{
     type: 'image',
     src: 'data/sprites/bullet.png'
 }, {
-	// game font
+    // game font
     name: '32x32_font',
     type: 'image',
     src: 'data/sprites/32x32_font.png'
@@ -225,33 +225,33 @@ var g_resources = [{
 
 
 var jsApp = {
-	/* ---
-		Initialize the jsApp
-		---			*/
-	onload: function() {
+    /* ---
+        Initialize the jsApp
+        ---         */
+    onload: function() {
 
-		// init the video
-		if (!me.video.init('jsapp', 320, 200, true, 'auto')) {
-			alert('Sorry but your browser does not support html 5 canvas.');
+        // init the video
+        if (!me.video.init('jsapp', 320, 200, true, 'auto')) {
+            alert('Sorry but your browser does not support html 5 canvas.');
             return;
-		}
+        }
 
-		// initialize the 'audio'
-		me.audio.init('mp3,ogg');
-		
-		// set all resources to be loaded
-		me.loader.onload = this.loaded.bind(this);
-		
-		// set all resources to be loaded
-		me.loader.preload(g_resources);
+        // initialize the 'audio'
+        me.audio.init('mp3,ogg');
 
-		// load everything & display a loading screen
-		me.state.change(me.state.LOADING);
+        // set all resources to be loaded
+        me.loader.onload = this.loaded.bind(this);
 
-		// me.debug.renderHitBox = true;
+        // set all resources to be loaded
+        me.loader.preload(g_resources);
 
-	},
-	
+        // load everything & display a loading screen
+        me.state.change(me.state.LOADING);
+
+        // me.debug.renderHitBox = true;
+
+    },
+
     /* ---------------------
     callback when everything is loaded
     ------------------------ */
@@ -259,13 +259,13 @@ var jsApp = {
 
         // set the 'Play/Ingame' Screen Object
         me.state.set(me.state.MENU, new TitleScreen());
-     
+
         // set the 'Play/Ingame' Screen Object
         me.state.set(me.state.PLAY, new PlayScreen());
-     
+
         // set a global fading transition for the screen
         me.state.transition('fade', '#FFFFFF', 250);
-     
+
         // add our player entity in the entity pool
         me.entityPool.add('mainPlayer', PlayerEntity);
         me.entityPool.add('mainPlayerOW', OverworldPlayerEntity);
@@ -280,7 +280,7 @@ var jsApp = {
         me.entityPool.add('teddy-bear', TeddyBearEntity);
 
         me.entityPool.add('keycard', KeycardEntity);
-        
+
         me.entityPool.add('raygun', RaygunEntity);
         me.entityPool.add('pogo', PogoEntity);
 
@@ -292,7 +292,7 @@ var jsApp = {
         me.entityPool.add('garg', GargEntity);
 
         me.entityPool.add('exit', ExitEntity);
-     
+
         // enable the keyboard
         me.input.bindKey(me.input.KEY.LEFT, 'left');
         me.input.bindKey(me.input.KEY.RIGHT, 'right');
@@ -314,7 +314,7 @@ var jsApp = {
         me.input.bindKey(me.input.KEY.G, 'g', false);
         me.input.bindKey(me.input.KEY.O, 'o', false);
         me.input.bindKey(me.input.KEY.D, 'd', false);
-     
+
         // display the menu title
         me.state.change(me.state.MENU);
 
@@ -336,10 +336,23 @@ var KeenLevelLoader = function( level ) {
         me.game.addHUD(0, 430, 640, 60);
     };
 
+var pad;
+var padState = {};
+
 /* The in game stuff */
 var PlayScreen = me.ScreenObject.extend({
-    
+
     init: function(){
+
+        pad = gamepad.init();
+
+        pad.pair().then(function (controller) {
+          console.log('Connected to controller');
+          console.log(pad.state);
+        }).catch(function (e) {
+          console.error(e.stack ? e.stack : e);
+        });
+
         this.parent(true);
     },
 
@@ -348,43 +361,50 @@ var PlayScreen = me.ScreenObject.extend({
         // load a level
         // me.levelDirector.loadLevel('level_1');
         KeenLevelLoader('mars');
- 		
- 		/*context.drawImage(this.title, 0, 0);
+
+        /*context.drawImage(this.title, 0, 0);
         this.font.draw(context, 'LEVEL ONE', 20, 240);*/
 
         // add a default HUD to the game mngr
         // me.game.addHUD(0, 430, 640, 60);
- 
+
         // add a new HUD item
         me.game.HUD.addItem('score', new ScoreObject(620, 10));
- 
+
         // make sure everyhting is in the right order
         me.game.sort();
- 
+
     },
- 
+
     /* ---
     Action to perform when game is finished (state change)
     --- */
     onDestroyEvent: function() {
 
          // remove the HUD
-    	me.game.disableHUD();
- 
-    	// stop the current audio track
-    	me.audio.stopTrack();
+        me.game.disableHUD();
+
+        // stop the current audio track
+        me.audio.stopTrack();
     },
 
     update: function(){
+        if (pad && pad.state) {
+            me.input.triggerKeyEvent(me.input.KEY.LEFT, pad.state.left);
+            me.input.triggerKeyEvent(me.input.KEY.RIGHT, pad.state.right);
+            me.input.triggerKeyEvent(me.input.KEY.UP, pad.state.up);
+            me.input.triggerKeyEvent(me.input.KEY.DOWN, pad.state.down);
+        }
+
         var ctx = me.video.getScreenCanvas().getContext('2d');
         ctx.imageSmoothingEnabled = false;
         ctx.webkitImageSmoothingEnabled = false;
         ctx.mozImageSmoothingEnabled = false;
     }
- 
+
 });
 
 // Bootstrap :)
 window.onReady(function() {
-	jsApp.onload();
+    jsApp.onload();
 });
