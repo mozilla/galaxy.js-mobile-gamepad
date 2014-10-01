@@ -238,10 +238,9 @@ Gamepad.prototype.pair = function (peerKey) {
 
         warn('[' + peer.address + '] Received unexpected message: ' +
           (typeof msg === 'object' ? JSON.stringify(msg) : msg));
-
-      resolve(peer);
-    }.bind(this));
-
+      }.bind(this));
+    }.bind(this)).then(function () {
+      this.modal.close();
     }.bind(this)).catch(function (err) {
       console.trace(err.stack ? err.stack : err);
     });
@@ -256,17 +255,19 @@ Gamepad.prototype.pair = function (peerKey) {
  * @memberOf Gamepad
  */
 Gamepad.prototype._updateState = function (data) {
- Object.keys(data || {}).forEach(function (key) {
-   if (!this.state[key] && data[key]) {
-     // Button pushed.
-     this._emit('buttondown', key);
-     this._emit('buttondown.' + key, key);
-   } else if (this.state[key] && !data[key]) {
-     // Button released.
-     this._emit('buttonup', key);
-     this._emit('buttonup.' + key, key);
-   }
- }.bind(this));
+  this.state = data;
+
+  Object.keys(data || {}).forEach(function (key) {
+    if (!this.state[key] && data[key]) {
+      // Button pushed.
+      this._emit('buttondown', key);
+      this._emit('buttondown.' + key, key);
+    } else if (this.state[key] && !data[key]) {
+      // Button released.
+      this._emit('buttonup', key);
+      this._emit('buttonup.' + key, key);
+    }
+  }.bind(this));
 };
 
 
@@ -290,9 +291,10 @@ Gamepad.prototype.hidePairingScreen = function () {
  * @param {*} data Data to pass to the listener.
  */
 Gamepad.prototype._emit = function (eventName, data) {
-  (this.listeners[eventName] || []).forEach(function (listener) {
-    listener.apply(listener, [data]);
-  });
+  // For now, skip.
+  // (this.listeners[eventName] || []).forEach(function (listener) {
+  //   listener.apply(listener, [data]);
+  // });
 };
 
 
