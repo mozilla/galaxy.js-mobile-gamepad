@@ -13,6 +13,8 @@ utils.polyfill();
 
 
 utils.lockOrientation('landscape-primary');
+
+
 function wantsAutoFullScreen() {
   return !('disableAutoFullScreen' in localStorage);
 }
@@ -26,6 +28,7 @@ document.addEventListener('keyup', function (e) {
   switch (e.keyCode) {
     case 70:  // Pressing F should toggle full-screen mode.
       trace('User pressed "F"; entering/exiting fullscreen');
+      delete localStorage.disableAutoFullScreen;
       return utils.toggleFullScreen();
     case 78:  // Pressing NF (really just N) should toggle full-screen mode.
       trace('User pressed "NF"; exiting fullscreen and will not ' +
@@ -37,7 +40,9 @@ document.addEventListener('keyup', function (e) {
 
 
 document.addEventListener('click', function (e) {
-  if (utils.fieldFocused(e) || !wantsAutoFullScreen()) {
+  // Bail if input is focussed, if we have autofocus disabled, or
+  // if we're already fullscreen.
+  if (utils.fieldFocused(e) || !wantsAutoFullScreen() || utils.isFullScreen()) {
     return;
   }
   trace('Automatically entering fullscreen');
