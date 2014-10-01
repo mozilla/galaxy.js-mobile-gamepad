@@ -55,6 +55,14 @@ Alternatively:
 
     NODE_ENVIRONMENT='development' gulp dev serve
 
+In another terminal session, start up the signalling server (__plink-server__):
+
+    npm run-script signalling-server
+
+Alternatively:
+
+    ./node_modules/plink-server/bin/plink-server
+
 
 ## Distribution
 

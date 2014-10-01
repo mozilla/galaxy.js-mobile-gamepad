@@ -33,7 +33,7 @@ function polyfill() {
 }
 
 
-function getPeerId() {
+function getPeerKey() {
   return (window.location.pathname.indexOf('.html') ?
     window.location.search.substr(1) : window.location.pathname.substr(1));
 }
@@ -71,7 +71,7 @@ function injectCSS(opts) {
   document.querySelector('head').appendChild(link);
 }
 
-function escape(text) {
+function escape_(text) {
   if (!text) {
     return text;
   }
@@ -143,11 +143,11 @@ return {
   error: error,
   warn: warn,
   polyfill: polyfill,
-  getPeerId: getPeerId,
+  getPeerKey: getPeerKey,
   fieldFocused: fieldFocused,
   hasTouchEvents: hasTouchEvents,
   injectCSS: injectCSS,
-  escape: escape,
+  escape: escape_,
   isFullScreen: isFullScreen,
   toggleFullScreen: toggleFullScreen,
   lockOrientation: lockOrientation,
