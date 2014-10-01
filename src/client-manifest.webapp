@@ -1,0 +1,16 @@
+{
+  "default_locale": "en-US",
+  "description": "Galaxy Pad",
+  "developer": {
+    "name": "Mozilla",
+    "url": "http://mozilla.org"
+  },
+  "icons": {
+    "128": "/img/controller-icon.png"
+  },
+  "launch_path": "/client.html?4765",
+  "name": "Galaxy Pad",
+  "type": "web",
+  "orientation": "landscape-primary",
+  "version": "hosted-version"
+}
