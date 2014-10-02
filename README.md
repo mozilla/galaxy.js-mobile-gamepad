@@ -78,3 +78,8 @@ Several files will be written to the `dist/` directory, including the main appli
 * [gamepad-client.min.js](https://raw.githubusercontent.com/mozilla/galaxy.js-mobile-gamepad/master/dist/js/gamepad-client.min.js)
 * [gamepad-host.js](https://raw.githubusercontent.com/mozilla/galaxy.js-mobile-gamepad/master/dist/js/gamepad-host.js)
 * [gamepad-host.min.js](https://raw.githubusercontent.com/mozilla/galaxy.js-mobile-gamepad/master/dist/js/gamepad-host.min.js)
+
+
+## Credits
+
+* [Ivan Prieto Garrido](https://dribbble.com/shots/1240163-Nintendo-controler-flat-icon-ios7) (unauthorised, temporary use of Nintendo™ controller flat icon for webapp icon; will replace before project is official)

@@ -16,15 +16,16 @@ function Modal(opts, inject) {
 }
 
 Modal.closeAll = Modal.prototype.close = function () {
-  utils.trace('Closed overlay');
   // Close any open modal.
   var openedModal = document.querySelector('.md-show');
   if (openedModal) {
     openedModal.classList.remove('md-show');
+    utils.trace('Closed modal');
   }
   // TODO: Wait until transition end.
   setTimeout(function () {
     document.body.classList.remove('galaxy-overlayed');
+    utils.trace('Hid overlay');
   }, 150);
 };
 
@@ -35,11 +36,11 @@ Modal.injectOverlay = function () {
     var d = document.createElement('div');
     d.className = 'md-overlay';
     document.body.appendChild(d);
+    utils.trace('Added overlay');
   }
 };
 
 Modal.prototype.html = function () {
-  utils.trace('Created modal DOM');
   var d = document.createElement('div');
   d.id = 'modal-' + this.id;
   d.className = 'md-modal md-effect-1 ' + (this.classes || '');
@@ -51,6 +52,9 @@ Modal.prototype.html = function () {
       '<div>' + this.content + '</div>' +
     '</div>'
   );
+
+  utils.trace('Created modal DOM');
+
   return d;
 };
 
@@ -74,6 +78,7 @@ Modal.prototype.inject = function () {
 
 Modal.prototype.open = function () {
   return new Promise(function () {
+    utils.trace('Opened modal');
     return this.el.classList.add('md-show');
   }.bind(this));
 };
