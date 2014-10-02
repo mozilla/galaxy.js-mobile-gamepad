@@ -149,11 +149,21 @@ Gamepad.prototype._pair = function (peerKey) {
     // Other peers can then use the key to connect to this game via the the
     // signalling server. Notice: this does not need to happen inside an
     // `open` event listener.
+    //
+    // Or "use key" if controller is already online.
     link.setKey(peerKey).then(function () {
       trace('Sent message to signalling server: ' +
         JSON.stringify({type: 'set key', key: peerKey}));
     }).catch(function (err) {
-      error('Failed to send peer key to signalling server: ' + err);
+      warn('Controller is already online; "set key" message rejected by ' +
+        'signalling server: ' + err);
+
+      link.useKey(peerKey).then(function () {
+        trace('Sent message to signalling server: ' +
+          JSON.stringify({type: 'use key', key: peerKey}));
+      }).catch(function (err) {
+        error('Failed to send "use key" mesage to signalling server: ' + err);
+      });
     });
 
     // 5. `link` emits this `message` *from* signalling server:
@@ -177,7 +187,7 @@ Gamepad.prototype._pair = function (peerKey) {
 
     // `connection` will fire when a peer has connected using the peer key.
     link.on('connection', function (peer) {
-      trace('[' + peer.address + '] Connected to signalling server' +
+      trace('[' + peer.address + '] Found peer via signalling server' +
         (numReattempts ? ' (reattempt #' + numReattempts++ + ')' : ''));
       resolve(peer);
 
