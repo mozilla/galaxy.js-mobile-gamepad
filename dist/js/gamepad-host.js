@@ -122,40 +122,136 @@ Gamepad.prototype._reverse_url = function (routeName) {
  * @returns {Promise}
  * @memberOf Gamepad
  */
-Gamepad.prototype._handshake = function (peerKey) {
+Gamepad.prototype._pair = function (peerKey) {
   return new Promise(function (resolve, reject) {
     if (!peerKey) {
       peerKey = utils.getPeerKey();  // The host key.
     }
     trace('Peer key: ' + peerKey);
 
-    // Create a root `plink` instance.
+    var numReattempts = 0;
+
+    // 1. Create a root `plink` instance.
     var plink = Plink.create();
     trace('Waiting for peer to connect');
 
-    // Connect to `plink-server` and await connection using the peer ID.
+    // 2. Connect to signalling server (`plink-server`).
     var link = plink.connect(settings.WS_URL);
-    link.on('connection', function (peer) {
-      resolve(peer);
-    }).on('close', function () {
-      // TODO: Reconnect to signalling server (#60).
-      warn('Connection lost with signalling server');
-    }).on('error', function (err) {
-      error('Could not connect to `plink-server`: ' +
-        JSON.stringify(err));
-      reject(err);
+
+    // 3. `link` emits `open` event (no event listener needed).
+
+    // 4. Send this message containing our peer key *to* the signalling server:
+    //
+    //    {
+    //       "type": "set key",
+    //       "key": "1234"
+    //    }
+    //
+    // Other peers can then use the key to connect to this game via the the
+    // signalling server. Notice: this does not need to happen inside an
+    // `open` event listener.
+    //
+    // Or "use key" if controller is already online.
+    link.setKey(peerKey).then(function () {
+      trace('Sent message to signalling server: ' +
+        JSON.stringify({type: 'set key', key: peerKey}));
+    }).catch(function (err) {
+      warn('Controller is already online; "set key" message rejected by ' +
+        'signalling server: ' + err);
+
+      link.useKey(peerKey).then(function () {
+        trace('Sent message to signalling server: ' +
+          JSON.stringify({type: 'use key', key: peerKey}));
+      }).catch(function (err) {
+        error('Failed to send "use key" mesage to signalling server: ' + err);
+      });
     });
 
-    // Set a key. Other peers can use to connect to this browser using this
-    // key via the connected `plink-server`.
-    // (This returns a Promise on whether the operation succeeded.)
-    link.setKey(peerKey);
-  });
+    // 5. `link` emits this `message` *from* signalling server:
+    //
+    //    {
+    //       "type": "key set",
+    //       "key": "1234"
+    //    }
+    //
+
+    // 6. We wait for a peer to send a session description protocol (SDP)
+    // message to the signalling server.
+
+    // 7. WebRTC takes over and we do the offer/answer dance. And that's
+    // where `RTCPeerConnection` data channels come from.
+
+    // 8. `RTCPeerConnection` emits `open` event when a peer is connected.
+
+
+    // Event listeners for the signalling server.
+
+    // `connection` will fire when a peer has connected using the peer key.
+    link.on('connection', function (peer) {
+      trace('[' + peer.address + '] Found peer via signalling server' +
+        (numReattempts ? ' (reattempt #' + numReattempts++ + ')' : ''));
+      resolve(peer);
+
+      // Event listeners for `RTCPeerConnection`.
+      peer.on('open', function () {
+        trace('[' + peer.address + '] Opened peer connection to controller');
+      }).on('message', function (msg) {
+        if (typeof msg === 'object' && msg.type) {
+          switch (msg.type) {
+            case 'bye':
+              // TODO: This should instead fire an event that the developer
+              // can then handle in the game (will likely want to pause too).
+              // We could offer Galaxy-styled toast notifications or modals.
+              warn('[' + peer.address +
+                '] Lost peer connection to controller');
+              numReattempts++;
+              return;
+            case 'state':
+              trace('[' + peer.address + '] Received new controller state ' +
+                'from peer: ' +
+                (typeof msg === 'object' ? JSON.stringify(msg) : msg));
+              return this._updateState(msg.data);
+            default:
+              return warn('[' + peer.address + '] Received peer message of ' +
+                'unexpected type (' + (msg.type || '') + '): ' +
+                (typeof msg === 'object' ? JSON.stringify(msg) : msg));
+          }
+        }
+
+        warn('[' + peer.address + '] Received unexpected peer message: ' +
+          (typeof msg === 'object' ? JSON.stringify(msg) : msg));
+      }.bind(this)).on('error', function (err) {
+        error('[' + peer.address + '] Peer error: ' +
+          (typeof err === 'object' ? JSON.stringify(err) : err));
+        reject(peer);
+      }).on('close', function () {
+        trace('[' + peer.address + '] Peer closed');
+      });
+
+      // Workaround because `RTCPeerConnection.onclose` ain't work in browsers:
+      // * https://code.google.com/p/webrtc/issues/detail?id=1676
+      // * https://bugzilla.mozilla.org/show_bug.cgi?id=881337
+      // * https://bugzilla.mozilla.org/show_bug.cgi?id=1009124
+      window.addEventListener('beforeunload', function () {
+        peer.send({type: 'bye'});
+      });
+   }.bind(this)).on('message', function (msg) {
+    trace('Received message from signalling server: ' +
+      JSON.stringify(msg));
+   }).on('error', function (err) {
+      error('Could not connect to signalling server' +
+        settings.DEBUG ? (': ' + JSON.stringify(err)) : '');
+      reject(err);
+    }).on('close', function () {
+      // TODO: Reconnect to signalling server (#60).
+      warn('Connection lost to signalling server');  // Not peer connection
+    });
+  }.bind(this));
 };
 
 
 /**
- * Connect to a controller using a shared peer key.
+ * Prompt the user to pair a controller and open a connection for pairing.
  *
  * Handshake with the WebSocket signalling server, listen for and establish a
  * a peer connection (via WebRTC's `RTCPeerConnection`), and relay messages
@@ -195,7 +291,10 @@ Gamepad.prototype.pair = function (peerKey) {
     }, true);
 
     this.modal.open().then(function () {
-      trace('Modal opened');
+      trace('Awaiting player to pair device');
+    }).catch(function () {
+      warn('Failed to open modal');
+      reject();
     });
 
     [
@@ -205,44 +304,10 @@ Gamepad.prototype.pair = function (peerKey) {
       utils.injectCSS({href: stylesheet});
     });
 
-    return this._handshake(peerKey).then(function (peer) {
-      trace('[' + peer.address + '] Connected');
-
-      peer.on('open', function () {
-        trace('[' + peer.address + '] Opened');
-        resolve(peer);
-      });
-
-      peer.on('close', function () {
-        trace('[' + peer.address + '] Closed');
-      });
-
-      peer.on('error', function (err) {
-        error('[' + peer.address + '] Error: ' +
-          (typeof err === 'object' ? JSON.stringify(err) : err));
-        reject(peer);
-      });
-
-      peer.on('message', function (msg) {
-        if (typeof msg === 'object' && msg.type) {
-          switch (msg.type) {
-            case 'state':
-              trace('[' + peer.address + '] Received new controller state: ' +
-                (typeof msg === 'object' ? JSON.stringify(msg) : msg));
-              return this._updateState(msg.data);
-            default:
-              return warn('[' + peer.address + '] Received message of ' +
-                'unexpected type (' + (msg.type || '') + '): ' +
-                (typeof msg === 'object' ? JSON.stringify(msg) : msg));
-          }
-        }
-
-        warn('[' + peer.address + '] Received unexpected message: ' +
-          (typeof msg === 'object' ? JSON.stringify(msg) : msg));
-
-      resolve(peer);
-    }.bind(this));
-
+    return this._pair(peerKey).then(function (peer) {
+      trace('[' + peer.address + '] Paired to controller');
+    }.bind(this)).then(function () {
+      this.modal.close();
     }.bind(this)).catch(function (err) {
       console.trace(err.stack ? err.stack : err);
     });
@@ -257,17 +322,19 @@ Gamepad.prototype.pair = function (peerKey) {
  * @memberOf Gamepad
  */
 Gamepad.prototype._updateState = function (data) {
- Object.keys(data || {}).forEach(function (key) {
-   if (!this.state[key] && data[key]) {
-     // Button pushed.
-     this._emit('buttondown', key);
-     this._emit('buttondown.' + key, key);
-   } else if (this.state[key] && !data[key]) {
-     // Button released.
-     this._emit('buttonup', key);
-     this._emit('buttonup.' + key, key);
-   }
- }.bind(this));
+  this.state = data;
+
+  Object.keys(data || {}).forEach(function (key) {
+    if (!this.state[key] && data[key]) {
+      // Button pushed.
+      this._emit('buttondown', key);
+      this._emit('buttondown.' + key, key);
+    } else if (this.state[key] && !data[key]) {
+      // Button released.
+      this._emit('buttonup', key);
+      this._emit('buttonup.' + key, key);
+    }
+  }.bind(this));
 };
 
 
@@ -291,9 +358,11 @@ Gamepad.prototype.hidePairingScreen = function () {
  * @param {*} data Data to pass to the listener.
  */
 Gamepad.prototype._emit = function (eventName, data) {
-  (this.listeners[eventName] || []).forEach(function (listener) {
-    listener.apply(listener, [data]);
-  });
+  // TODO: Handle proper event emission (#44).
+  trace('Emit "' + eventName + '": ' + data);
+  // (this.listeners[eventName] || []).forEach(function (listener) {
+  //   listener.apply(listener, [data]);
+  // });
 };
 
 
@@ -361,7 +430,7 @@ module.exports = gamepad;
 
 })(window, document);
 
-},{"./lib/modal":17,"./lib/routes":18,"./lib/utils":19,"./settings":20,"plink":13}],2:[function(require,module,exports){
+},{"./lib/modal":17,"./lib/routes":18,"./lib/utils":19,"./settings":20,"plink":6}],2:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -730,639 +799,8 @@ process.chdir = function (dir) {
 };
 
 },{}],4:[function(require,module,exports){
-module.exports = require('./lib/P.js');
-},{"./lib/P.js":8}],5:[function(require,module,exports){
-var JSONProtocol = require('./JSONProtocol.js'),
-	its = require('its'),
-	Emitter = require('events').EventEmitter;
-	
-function notImplemented(){
-	throw new Error('This method is not implemented');
-}
-
-function Connection(address, peers, options){
-	its.string(address);
-	its.defined(peers);
-
-	this.address = address;
-	this.peers = peers;
-
-	if(options){
-		if(options.emitter) this.emitter = options.emitter;
-		if(options.firewall) this.acceptRTCConnection = options.firewall;
-	}
-
-	if(!this.emitter) this.emitter = new Connection.Emitter();
-}
-
-// Circular dependency solved in WebRTCConnection.js
-Connection.createWebRTCConnection = null;
-Connection.Emitter = Emitter;
-
-Connection.prototype = Object.create(JSONProtocol.prototype);
-
-Connection.prototype.on = function(){
-	this.emitter.on.apply(this.emitter, arguments);
-	return this;
-};
-
-Connection.prototype.removeListener = function(){
-	this.emitter.removeListener.apply(this.emitter, arguments);
-	return this;
-};
-
-Connection.prototype.send = JSONProtocol.prototype.writeMessage;
-
-Connection.prototype.getPeer = function(address){
-	return this.peers.get(address);
-};
-
-Connection.prototype.addPeer = function(peer){
-	return this.peers.add(peer);
-};
-
-Connection.prototype.getPeers = function() {
-	return this.peers.get();
-};
-
-function isString(candidate){
-	return Object.prototype.toString.call(candidate) === '[object String]';
-}
-
-Connection.prototype.connect = function(config){
-	if(isString(config)){
-		config = {address: config};
-	}
-
-	var self = this,
-		firewall = config.firewall || this.firewall,
-		peer = Connection.createWebRTCConnection(config, this.peers, this, {firewall: firewall});
-	
-	peer.writeOffer(config);
-	
-	this.peers.add(peer);
-
-	peer.on('close', function(){
-		self.peers.remove(peer);
-		self.emitter.emit('disconnection', peer);
-	});
-
-	this.emitter.emit('connection', peer);
-
-	return peer;
-};
-
-Connection.prototype.readMessage = function(message){
-	this.emitter.emit('message', message);
-};
-
-Connection.prototype.readArrayBuffer = function(message){
-	this.emitter.emit('arraybuffer', message);
-};
-
-Connection.prototype.acceptRTCConnection = function(description, data){
-	return true;
-};
-
-Connection.prototype.readRelay = function(peerAddress, message){
-	var peer = this.getPeer(peerAddress);
-
-	if(!peer){
-		this.emitter.emit('error', new Error("Unknown peer at address: " + peerAddress));
-		return;
-	}
-	
-	peer.writeRelayedMessage(this.address, message);
-};
-
-Connection.prototype.readRelayedIceCandidate = function(peerAddress, candidate){
-	var peer = this.getPeer(peerAddress);
-
-	if(!peer){
-		this.emitter.emit('error', new Error("Unknown peer at address: " + peerAddress));
-		return;
-	}
-
-	peer.readIceCandidate(candidate);
-};
-
-Connection.prototype.readRelayedOffer = function(peerAddress, description, data){
-	if(!this.acceptRTCConnection(description, data)) return false;
-
-	var self = this,
-		peer = Connection.createWebRTCConnection({address:peerAddress}, this.peers, this, {firewall: this.firewall});
-	
-	this.addPeer(peer);
-
-	peer.on('close', function(){
-		self.peers.remove(peer);
-		self.emitter.emit('disconnection', peer);
-	});
-
-	peer.readOffer(description);
-	peer.writeAnswer();
-
-	this.emitter.emit('connection', peer);
-};
-
-Connection.prototype.readRelayedAnswer = function(peerAddress, description){
-	var peer = this.getPeer(peerAddress);
-
-	if(!peer){
-		this.emitter.emit('error', new Error("Unknown peer at address: " + peerAddress));
-		return;
-	}
-
-	peer.readAnswer(description);
-};
-
-Connection.prototype.close = notImplemented; // implemented higher up
-Connection.prototype.getReadyState = notImplemented; // implemented higher up
-
-Connection.prototype.isOpen = function(){
-	return this.getReadyState() === 'open';
-};
-
-module.exports = Connection;
-
-},{"./JSONProtocol.js":7,"events":2,"its":11}],6:[function(require,module,exports){
-var its = require('its');
-
-function noop(){}
-
-function ConnectionManager(){
-	this.connectionMap = {};
-	this.connectionList = [];
-}
-
-ConnectionManager.prototype.get = function(address){
-	if(address === undefined) return this.connectionList.slice();
-
-	return this.connectionMap[address];
-};
-
-ConnectionManager.prototype.add = function(connection) {
-	its.defined(connection);
-
-	var address = connection.address;
-	its.string(address);
-
-	if(address in this.connectionMap) return false;
-	
-	this.connectionMap[address] = connection;
-	this.connectionList.push(connection);
-
-	this.onAdd(connection);
-	return true;
-};
-ConnectionManager.prototype.onAdd = noop;
-
-ConnectionManager.prototype.remove = function(connection){
-	its.defined(connection);
-
-	var address = connection.address;
-	its.string(address);
-
-	var mappedConnection = this.connectionMap[address];
-	if(!mappedConnection || mappedConnection !== connection) return false;
-
-	delete this.connectionMap[address];
-	
-	var index = this.connectionList.indexOf(connection);
-	this.connectionList.splice(index, 1);
-
-	this.onRemove(connection);
-	return true;
-};
-ConnectionManager.prototype.onRemove = noop;
-
-module.exports = ConnectionManager;
-},{"its":11}],7:[function(require,module,exports){
-function notImplemented(){
-	throw new Error('This method is not implemented');
-}
-
-function JSONProtocol(){}
-
-JSONProtocol.prototype.PROTOCOL_NAME = 'p';
-
-JSONProtocol.prototype.MESSAGE_TYPE = {
-	DIRECT: 0, // [0, message]
-
-	RTC_OFFER: 3, // [3, description, data]
-	RTC_ANSWER: 4, // [4, description]
-	RTC_ICE_CANDIDATE: 5, // [5, candidate]
-
-	RELAY: 6, // [6, address, message]
-	RELAYED: 7 // [7, address, message]
-};
-
-JSONProtocol.prototype.readRaw = function(message){
-	if(message instanceof ArrayBuffer){
-		this.readArrayBuffer(message);
-	} else {
-		this.readProtocolMessage(JSON.parse(message));
-	}	
-};
-
-JSONProtocol.prototype.readProtocolMessage = function(message){
-	var MESSAGE_TYPE = this.MESSAGE_TYPE,
-		messageType = message[0];
-	
-	switch(messageType){
-		// This is a message from the remote node to this one.
-		case MESSAGE_TYPE.DIRECT:
-			this.readMessage(message[1]);
-			break;
-
-		// The message was relayed by the peer on behalf of
-		// a third party peer, identified by "thirdPartyPeerId".
-		// This means that the peer is acting as a signalling
-		// channel on behalf of the third party peer.
-		case MESSAGE_TYPE.RELAYED:
-			this.readRelayedMessage(message[1], message[2]);
-			break;
-
-		// The message is intended for another peer, identified
-		// by "peerId", which is also connected to this node.
-		// This means that the peer is using this connection
-		// as a signalling channel in order to establish a connection
-		// to the other peer identified "peerId".
-		case MESSAGE_TYPE.RELAY:
-			this.readRelay(message[1], message[2]);
-			break;
-
-		default:
-			throw new Error('Unknown message type: ' + messageType);
-	}
-};
-
-JSONProtocol.prototype.readRelayedMessage = function(origin, message){
-	var MESSAGE_TYPE = this.MESSAGE_TYPE,
-		messageType = message[0];
-
-	switch(messageType){
-		// An initial connection request from a third party peer
-		case MESSAGE_TYPE.RTC_OFFER:
-			this.readRelayedOffer(origin, message[1], message[2]);
-			break;
-		
-		// An answer to an RTC offer sent from this node
-		case MESSAGE_TYPE.RTC_ANSWER:
-			this.readRelayedAnswer(origin, message[1]);
-			break;
-		
-		// An ICE candidate from the source node
-		case MESSAGE_TYPE.RTC_ICE_CANDIDATE:
-			this.readRelayedIceCandidate(origin, message[1]);
-			break;
-
-		default:
-			throw new Error('Unknown message type: ' + messageType);
-	}		
-};
-
-JSONProtocol.prototype.readMessage = notImplemented;
-JSONProtocol.prototype.readArrayBuffer = notImplemented;
-JSONProtocol.prototype.readRelay = notImplemented;
-
-JSONProtocol.prototype.readRelayedOffer = notImplemented;
-JSONProtocol.prototype.readRelayedAnswer = notImplemented;
-JSONProtocol.prototype.readRelayedIceCandidate = notImplemented;
-
-JSONProtocol.prototype.writeRaw = notImplemented;
-
-JSONProtocol.prototype.writeProtocolMessage = function(message){
-	var serializedMessage = JSON.stringify(message);
-	this.writeRaw(serializedMessage);
-};
-
-JSONProtocol.prototype.writeMessage = function(message){
-	if(message instanceof ArrayBuffer){
-		this.writeRaw(message);
-	} else {
-		this.writeStringMessage(message);
-	}
-};
-
-JSONProtocol.prototype.writeStringMessage = function(message){
-	this.writeProtocolMessage([
-		this.MESSAGE_TYPE.DIRECT,
-		message
-	]);
-};
-
-JSONProtocol.prototype.writeRelayedMessage = function(origin, message){
-	this.writeProtocolMessage([
-		this.MESSAGE_TYPE.RELAYED,
-		origin,
-		message
-	]);
-};
-
-JSONProtocol.prototype.writeRelayMessage = function(destination, message){
-	this.writeProtocolMessage([
-		this.MESSAGE_TYPE.RELAY,
-		destination,
-		message
-	]);
-};
-
-JSONProtocol.prototype.writeRelayAnswer = function(destination, description){
-	this.writeRelayMessage(destination, [
-		this.MESSAGE_TYPE.RTC_ANSWER,
-		description
-	]);
-};
-
-JSONProtocol.prototype.writeRelayIceCandidate = function(destination, candidate){
-	this.writeRelayMessage(destination, [
-		this.MESSAGE_TYPE.RTC_ICE_CANDIDATE,
-		candidate
-	]);
-};
-
-JSONProtocol.prototype.writeRelayOffer = function(destination, description, data){
-	this.writeRelayMessage(destination, [
-		this.MESSAGE_TYPE.RTC_OFFER,
-		description,
-		data
-	]);
-};
-
-module.exports = JSONProtocol;
-},{}],8:[function(require,module,exports){
-var Emitter = require('events').EventEmitter,
-	ConnectionManager = require('./ConnectionManager.js'),
-	WebSocketConnection = require('./WebSocketConnection.js'),
-	WebRTCConnection = require('./WebRTCConnection.js'),
-	its = require('its');
-
-function P(emitter, connectionManager, options){
-	its.defined(emitter);
-	its.defined(connectionManager);
-
-	this.emitter = emitter;
-	this.peers = connectionManager;
-
-	this.peers.onAdd = function(peer){
-		emitter.emit('connection', peer);
-	};
-
-	this.peers.onRemove = function(peer){
-		emitter.emit('disconnection', peer);
-	};
-
-	if(options && options.firewall) this.firewall = options.firewall;
-}
-
-P.create = function(options){
-	var emitter = new Emitter(),
-		connectionManager = new ConnectionManager();
-
-	return new P(emitter, connectionManager, options);
-};
-
-P.prototype.getPeers = function(){
-	return this.peers.get();
-};
-
-P.prototype.connect = function(address){
-	its.string(address);
-
-	var peers = this.peers,
-		peer = WebSocketConnection.create(address, this.peers, {firewall: this.firewall});
-
-	peers.add(peer);
-
-	peer.on('close', function(){
-		peers.remove(peer);
-	});
-
-	return peer;
-};
-
-P.prototype.on = function(){
-	this.emitter.on.apply(this.emitter, arguments);
-	return this;
-};
-
-P.prototype.removeListener = function(){
-	this.emitter.removeListener.apply(this.emitter, arguments);
-	return this;
-};
-
-module.exports = P;
-},{"./ConnectionManager.js":6,"./WebRTCConnection.js":9,"./WebSocketConnection.js":10,"events":2,"its":11}],9:[function(require,module,exports){
-var Connection = require('./Connection.js'),
-	its = require('its');
-
-var nativeRTCPeerConnection = (typeof RTCPeerConnection !== 'undefined')? RTCPeerConnection :
-							  (typeof webkitRTCPeerConnection !== 'undefined')? webkitRTCPeerConnection :
-							  (typeof mozRTCPeerConnection !== 'undefined')? mozRTCPeerConnection :
-							  undefined;
-
-var nativeRTCSessionDescription = (typeof RTCSessionDescription !== 'undefined')? RTCSessionDescription :
-								  (typeof mozRTCSessionDescription !== 'undefined')? mozRTCSessionDescription :
-								  undefined;
-var nativeRTCIceCandidate = (typeof RTCIceCandidate !== 'undefined')? RTCIceCandidate :
-							(typeof mozRTCIceCandidate !== 'undefined')? mozRTCIceCandidate :
-							undefined;
-
-function WebRTCConnection(address, peers, rtcConnection, signalingChannel, options){
-	var self = this;
-
-	its.string(address);
-	its.defined(peers);
-	its.defined(rtcConnection);
-	its.defined(signalingChannel);
-
-	Connection.call(this, address, peers, options);
-
-	this.signalingChannel = signalingChannel;
-	this.rtcConnection = rtcConnection;
-	this.rtcDataChannel = rtcConnection.createDataChannel(this.PROTOCOL_NAME, {reliable: false});
-
-	this.close = rtcConnection.close.bind(rtcConnection);
-
-	this.rtcConnection.addEventListener('icecandidate', function(event){
-		if(!event.candidate) return;
-
-		self.signalingChannel.writeRelayIceCandidate(address, event.candidate);
-	});
-
-	this.rtcDataChannel.addEventListener('message', function(message){
-		self.readRaw(message.data);
-	});
-
-	this.rtcDataChannel.addEventListener('open', function(event){
-		self.emitter.emit('open', event);
-	});
-
-	this.rtcDataChannel.addEventListener('error', function(event){
-		self.emitter.emit('error', event);
-	});
-
-	this.rtcDataChannel.addEventListener('close', function(event){
-		self.emitter.emit('close', event);
-	});
-}
-
-var DEFAULT_RTC_CONFIGURATION = null;
-var DEFAULT_MEDIA_CONSTRAINTS = {
-	optional: [{RtpDataChannels: true}],
-    mandatory: {
-        OfferToReceiveAudio: false,
-        OfferToReceiveVideo: false
-    }
-};
-
-WebRTCConnection.create = function(config, peers, signalingChannel, options){
-	var rtcConfiguration = config.rtcConfiguration || DEFAULT_RTC_CONFIGURATION,
-		mediaConstraints = config.mediaConstraints || DEFAULT_MEDIA_CONSTRAINTS,
-		rtcConnection = new nativeRTCPeerConnection(rtcConfiguration, mediaConstraints);
-
-	return new WebRTCConnection(config.address, peers, rtcConnection, signalingChannel, options);
-};
-
-WebRTCConnection.prototype = Object.create(Connection.prototype);
-
-WebRTCConnection.prototype.writeRaw = function(message){
-	switch(this.rtcDataChannel.readyState){
-		case 'connecting':
-			throw new Error('Can\'t send a message while RTCDataChannel connecting');
-		case 'open':
-			this.rtcDataChannel.send(message);
-			break;
-		case 'closing':
-		case 'closed':
-			throw new Error('Can\'t send a message while RTCDataChannel is closing or closed');
-	}
-};
-
-WebRTCConnection.prototype.readAnswer = function(description){
-	var rtcSessionDescription = new nativeRTCSessionDescription(description);
-	
-	this.rtcConnection.setRemoteDescription(rtcSessionDescription);
-};
-
-WebRTCConnection.prototype.readOffer = function(description){
-	var rtcSessionDescription = new nativeRTCSessionDescription(description);
-	
-	this.rtcConnection.setRemoteDescription(rtcSessionDescription);
-};
-
-WebRTCConnection.prototype.readIceCandidate = function(candidate){
-	var emitter = this.emitter;
-	this.rtcConnection.addIceCandidate(new nativeRTCIceCandidate(candidate));
-};
-
-WebRTCConnection.prototype.writeAnswer = function(){
-	var emitter = this.emitter,
-		address = this.address,
-		rtcConnection = this.rtcConnection,
-		signalingChannel = this.signalingChannel;
-
-	function onError(err){ emitter.emit('error', err); }
-
-	rtcConnection.createAnswer(function(description){
-		rtcConnection.setLocalDescription(description, function(){
-			signalingChannel.writeRelayAnswer(address, description);
-		}, onError);
-	}, onError);
-};
-
-WebRTCConnection.prototype.writeOffer = function(config){
-	var emitter = this.emitter,
-		address = this.address,
-		rtcConnection = this.rtcConnection,
-		signalingChannel = this.signalingChannel;
-
-	function onError(err){ emitter.emit('error', err); }
-
-	rtcConnection.createOffer(function(description){
-		rtcConnection.setLocalDescription(description, function(){
-			signalingChannel.writeRelayOffer(address, description, config.offerData);
-		}, onError);
-	}, onError, config.mediaConstraints || DEFAULT_MEDIA_CONSTRAINTS);
-};
-
-WebRTCConnection.prototype.getReadyState = function(){
-	return this.rtcDataChannel.readyState;
-};
-
-
-// Solves the circular dependency with Connection.js
-Connection.createWebRTCConnection = WebRTCConnection.create;
-
-module.exports = WebRTCConnection;
-},{"./Connection.js":5,"its":11}],10:[function(require,module,exports){
-var Connection = require('./Connection.js');
-
-function WebSocketConnection(address, peers, webSocket, options){
-	var self = this;
-
-	Connection.call(this, address, peers, options);
-
-	this.webSocket = webSocket;
-	
-	this.close = webSocket.close.bind(webSocket);
-
-	this.webSocket.addEventListener('message', function(message){
-		self.readRaw(message.data);
-	});
-
-	this.webSocket.addEventListener('open', function(event){
-		self.emitter.emit('open', event);
-	});
-
-	this.webSocket.addEventListener('error', function(event){
-		self.emitter.emit('error', event);
-	});
-
-	this.webSocket.addEventListener('close', function(event){
-		self.emitter.emit('close', event);
-	});
-}
-
-WebSocketConnection.create = function(address, peers, options){
-	var webSocket = new WebSocket(address, WebSocketConnection.prototype.PROTOCOL_NAME);
-	return new WebSocketConnection(address, peers, webSocket, options);
-};
-
-WebSocketConnection.prototype = Object.create(Connection.prototype);
-WebSocketConnection.prototype.writeRaw = function(message){
-	switch(this.webSocket.readyState){
-		case WebSocket.CONNECTING:
-			throw new Error("Can't send a message while WebSocket connecting");
-
-		case WebSocket.OPEN:
-			this.webSocket.send(message);
-			break;
-
-		case WebSocket.CLOSING:
-		case WebSocket.CLOSED:
-			throw new Error("Can't send a message while WebSocket is closing or closed");
-	}
-};
-
-WebSocketConnection.prototype.getReadyState = function(){
-	switch(this.webSocket.readyState){
-		case WebSocket.CONNECTING:
-			return 'connecting';
-		case WebSocket.OPEN:
-			return 'open';
-		case WebSocket.CLOSING:
-			return 'closing';
-		case WebSocket.CLOSED:
-			return 'closed';
-	}
-};
-
-module.exports = WebSocketConnection;
-},{"./Connection.js":5}],11:[function(require,module,exports){
 module.exports = require('./lib/its.js');
-},{"./lib/its.js":12}],12:[function(require,module,exports){
+},{"./lib/its.js":5}],5:[function(require,module,exports){
 // Helpers
 var slice = Array.prototype.slice;
 var toString = Object.prototype.toString;
@@ -1553,9 +991,9 @@ its.range = function(expression, message){
 
 	return expression;
 };
-},{}],13:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 module.exports = require('./lib/Plink.js');
-},{"./lib/Plink.js":14}],14:[function(require,module,exports){
+},{"./lib/Plink.js":7}],7:[function(require,module,exports){
 var P = require('internet');
 var PlinkServer = require('./PlinkServer.js');
 
@@ -1574,7 +1012,7 @@ Plink.prototype.connect = function(address){
 	return PlinkServer.create(onramp);
 };
 
-},{"./PlinkServer.js":15,"internet":4}],15:[function(require,module,exports){
+},{"./PlinkServer.js":8,"internet":9}],8:[function(require,module,exports){
 var when = require('when');
 
 function PlinkServer(onramp){
@@ -1723,7 +1161,661 @@ PlinkServer.prototype.messageHandler = function(message){
 		}
 	}
 };
-},{"when":16}],16:[function(require,module,exports){
+},{"when":16}],9:[function(require,module,exports){
+module.exports = require('./lib/P.js');
+},{"./lib/P.js":13}],10:[function(require,module,exports){
+var JSONProtocol = require('./JSONProtocol.js'),
+	its = require('its'),
+	Emitter = require('events').EventEmitter;
+	
+function notImplemented(){
+	throw new Error('This method is not implemented');
+}
+
+function Connection(address, peers, options){
+	its.string(address);
+	its.defined(peers);
+
+	this.address = address;
+	this.peers = peers;
+
+	if(options){
+		if(options.emitter) this.emitter = options.emitter;
+		if(options.firewall) this.acceptRTCConnection = options.firewall;
+	}
+
+	if(!this.emitter) this.emitter = new Connection.Emitter();
+}
+
+// Circular dependency solved in WebRTCConnection.js
+Connection.createWebRTCConnection = null;
+Connection.Emitter = Emitter;
+
+Connection.prototype = Object.create(JSONProtocol.prototype);
+
+Connection.prototype.on = function(){
+	this.emitter.on.apply(this.emitter, arguments);
+	return this;
+};
+
+Connection.prototype.removeListener = function(){
+	this.emitter.removeListener.apply(this.emitter, arguments);
+	return this;
+};
+
+Connection.prototype.send = JSONProtocol.prototype.writeMessage;
+
+Connection.prototype.getPeer = function(address){
+	return this.peers.get(address);
+};
+
+Connection.prototype.addPeer = function(peer){
+	return this.peers.add(peer);
+};
+
+Connection.prototype.getPeers = function() {
+	return this.peers.get();
+};
+
+function isString(candidate){
+	return Object.prototype.toString.call(candidate) === '[object String]';
+}
+
+Connection.prototype.connect = function(config){
+	if(isString(config)){
+		config = {address: config};
+	}
+
+	var self = this,
+		firewall = config.firewall || this.firewall,
+		peer = Connection.createWebRTCConnection(config, this.peers, this, {firewall: firewall});
+	
+	peer.writeOffer(config);
+	
+	this.peers.add(peer);
+
+	peer.on('close', function(){
+		self.peers.remove(peer);
+		self.emitter.emit('disconnection', peer);
+	});
+
+	this.emitter.emit('connection', peer);
+
+	return peer;
+};
+
+Connection.prototype.readMessage = function(message){
+	this.emitter.emit('message', message);
+};
+
+Connection.prototype.readArrayBuffer = function(message){
+	this.emitter.emit('arraybuffer', message);
+};
+
+Connection.prototype.acceptRTCConnection = function(description, data){
+	return true;
+};
+
+Connection.prototype.readRelay = function(peerAddress, message){
+	var peer = this.getPeer(peerAddress);
+
+	if(!peer){
+		this.emitter.emit('error', new Error("Unknown peer at address: " + peerAddress));
+		return;
+	}
+	
+	peer.writeRelayedMessage(this.address, message);
+};
+
+Connection.prototype.readRelayedIceCandidate = function(peerAddress, candidate){
+	var peer = this.getPeer(peerAddress);
+
+	if(!peer){
+		this.emitter.emit('error', new Error("Unknown peer at address: " + peerAddress));
+		return;
+	}
+
+	peer.readIceCandidate(candidate);
+};
+
+Connection.prototype.readRelayedOffer = function(peerAddress, description, data){
+	if(!this.acceptRTCConnection(description, data)) return false;
+
+	var self = this,
+		peer = Connection.createWebRTCConnection({address:peerAddress}, this.peers, this, {firewall: this.firewall});
+	
+	this.addPeer(peer);
+
+	peer.on('close', function(){
+		self.peers.remove(peer);
+		self.emitter.emit('disconnection', peer);
+	});
+
+	peer.readOffer(description);
+	peer.writeAnswer();
+
+	this.emitter.emit('connection', peer);
+};
+
+Connection.prototype.readRelayedAnswer = function(peerAddress, description){
+	var peer = this.getPeer(peerAddress);
+
+	if(!peer){
+		this.emitter.emit('error', new Error("Unknown peer at address: " + peerAddress));
+		return;
+	}
+
+	peer.readAnswer(description);
+};
+
+Connection.prototype.close = notImplemented; // implemented higher up
+Connection.prototype.getReadyState = notImplemented; // implemented higher up
+
+Connection.prototype.isOpen = function(){
+	return this.getReadyState() === 'open';
+};
+
+module.exports = Connection;
+
+},{"./JSONProtocol.js":12,"events":2,"its":4}],11:[function(require,module,exports){
+var its = require('its');
+
+function noop(){}
+
+function ConnectionManager(){
+	this.connectionMap = {};
+	this.connectionList = [];
+}
+
+ConnectionManager.prototype.get = function(address){
+	if(address === undefined) return this.connectionList.slice();
+
+	return this.connectionMap[address];
+};
+
+ConnectionManager.prototype.add = function(connection) {
+	its.defined(connection);
+
+	var address = connection.address;
+	its.string(address);
+
+	if(address in this.connectionMap) return false;
+	
+	this.connectionMap[address] = connection;
+	this.connectionList.push(connection);
+
+	this.onAdd(connection);
+	return true;
+};
+ConnectionManager.prototype.onAdd = noop;
+
+ConnectionManager.prototype.remove = function(connection){
+	its.defined(connection);
+
+	var address = connection.address;
+	its.string(address);
+
+	var mappedConnection = this.connectionMap[address];
+	if(!mappedConnection || mappedConnection !== connection) return false;
+
+	delete this.connectionMap[address];
+	
+	var index = this.connectionList.indexOf(connection);
+	this.connectionList.splice(index, 1);
+
+	this.onRemove(connection);
+	return true;
+};
+ConnectionManager.prototype.onRemove = noop;
+
+module.exports = ConnectionManager;
+},{"its":4}],12:[function(require,module,exports){
+function notImplemented(){
+	throw new Error('This method is not implemented');
+}
+
+function JSONProtocol(){}
+
+JSONProtocol.prototype.PROTOCOL_NAME = 'p';
+
+JSONProtocol.prototype.MESSAGE_TYPE = {
+	DIRECT: 0, // [0, message]
+
+	RTC_OFFER: 3, // [3, description, data]
+	RTC_ANSWER: 4, // [4, description]
+	RTC_ICE_CANDIDATE: 5, // [5, candidate]
+
+	RELAY: 6, // [6, address, message]
+	RELAYED: 7 // [7, address, message]
+};
+
+JSONProtocol.prototype.readRaw = function(message){
+	if(message instanceof ArrayBuffer){
+		this.readArrayBuffer(message);
+	} else {
+		this.readProtocolMessage(JSON.parse(message));
+	}	
+};
+
+JSONProtocol.prototype.readProtocolMessage = function(message){
+	var MESSAGE_TYPE = this.MESSAGE_TYPE,
+		messageType = message[0];
+	
+	switch(messageType){
+		// This is a message from the remote node to this one.
+		case MESSAGE_TYPE.DIRECT:
+			this.readMessage(message[1]);
+			break;
+
+		// The message was relayed by the peer on behalf of
+		// a third party peer, identified by "thirdPartyPeerId".
+		// This means that the peer is acting as a signalling
+		// channel on behalf of the third party peer.
+		case MESSAGE_TYPE.RELAYED:
+			this.readRelayedMessage(message[1], message[2]);
+			break;
+
+		// The message is intended for another peer, identified
+		// by "peerId", which is also connected to this node.
+		// This means that the peer is using this connection
+		// as a signalling channel in order to establish a connection
+		// to the other peer identified "peerId".
+		case MESSAGE_TYPE.RELAY:
+			this.readRelay(message[1], message[2]);
+			break;
+
+		default:
+			throw new Error('Unknown message type: ' + messageType);
+	}
+};
+
+JSONProtocol.prototype.readRelayedMessage = function(origin, message){
+	var MESSAGE_TYPE = this.MESSAGE_TYPE,
+		messageType = message[0];
+
+	switch(messageType){
+		// An initial connection request from a third party peer
+		case MESSAGE_TYPE.RTC_OFFER:
+			this.readRelayedOffer(origin, message[1], message[2]);
+			break;
+		
+		// An answer to an RTC offer sent from this node
+		case MESSAGE_TYPE.RTC_ANSWER:
+			this.readRelayedAnswer(origin, message[1]);
+			break;
+		
+		// An ICE candidate from the source node
+		case MESSAGE_TYPE.RTC_ICE_CANDIDATE:
+			this.readRelayedIceCandidate(origin, message[1]);
+			break;
+
+		default:
+			throw new Error('Unknown message type: ' + messageType);
+	}		
+};
+
+JSONProtocol.prototype.readMessage = notImplemented;
+JSONProtocol.prototype.readArrayBuffer = notImplemented;
+JSONProtocol.prototype.readRelay = notImplemented;
+
+JSONProtocol.prototype.readRelayedOffer = notImplemented;
+JSONProtocol.prototype.readRelayedAnswer = notImplemented;
+JSONProtocol.prototype.readRelayedIceCandidate = notImplemented;
+
+JSONProtocol.prototype.writeRaw = notImplemented;
+
+JSONProtocol.prototype.writeProtocolMessage = function(message){
+	var serializedMessage = JSON.stringify(message);
+	this.writeRaw(serializedMessage);
+};
+
+JSONProtocol.prototype.writeMessage = function(message){
+	if(message instanceof ArrayBuffer){
+		this.writeRaw(message);
+	} else {
+		this.writeStringMessage(message);
+	}
+};
+
+JSONProtocol.prototype.writeStringMessage = function(message){
+	this.writeProtocolMessage([
+		this.MESSAGE_TYPE.DIRECT,
+		message
+	]);
+};
+
+JSONProtocol.prototype.writeRelayedMessage = function(origin, message){
+	this.writeProtocolMessage([
+		this.MESSAGE_TYPE.RELAYED,
+		origin,
+		message
+	]);
+};
+
+JSONProtocol.prototype.writeRelayMessage = function(destination, message){
+	this.writeProtocolMessage([
+		this.MESSAGE_TYPE.RELAY,
+		destination,
+		message
+	]);
+};
+
+JSONProtocol.prototype.writeRelayAnswer = function(destination, description){
+	this.writeRelayMessage(destination, [
+		this.MESSAGE_TYPE.RTC_ANSWER,
+		description
+	]);
+};
+
+JSONProtocol.prototype.writeRelayIceCandidate = function(destination, candidate){
+	this.writeRelayMessage(destination, [
+		this.MESSAGE_TYPE.RTC_ICE_CANDIDATE,
+		candidate
+	]);
+};
+
+JSONProtocol.prototype.writeRelayOffer = function(destination, description, data){
+	this.writeRelayMessage(destination, [
+		this.MESSAGE_TYPE.RTC_OFFER,
+		description,
+		data
+	]);
+};
+
+module.exports = JSONProtocol;
+},{}],13:[function(require,module,exports){
+var Emitter = require('events').EventEmitter,
+	ConnectionManager = require('./ConnectionManager.js'),
+	WebSocketConnection = require('./WebSocketConnection.js'),
+	WebRTCConnection = require('./WebRTCConnection.js'),
+	its = require('its');
+
+function P(emitter, connectionManager, options){
+	its.defined(emitter);
+	its.defined(connectionManager);
+
+	this.emitter = emitter;
+	this.peers = connectionManager;
+
+	this.peers.onAdd = function(peer){
+		emitter.emit('connection', peer);
+	};
+
+	this.peers.onRemove = function(peer){
+		emitter.emit('disconnection', peer);
+	};
+
+	if(options && options.firewall) this.firewall = options.firewall;
+}
+
+P.create = function(options){
+	var emitter = new Emitter(),
+		connectionManager = new ConnectionManager();
+
+	return new P(emitter, connectionManager, options);
+};
+
+P.prototype.getPeers = function(){
+	return this.peers.get();
+};
+
+P.prototype.connect = function(address){
+	its.string(address);
+
+	var peers = this.peers,
+		peer = WebSocketConnection.create(address, this.peers, {firewall: this.firewall});
+
+	peers.add(peer);
+
+	peer.on('close', function(){
+		peers.remove(peer);
+	});
+
+	return peer;
+};
+
+P.prototype.on = function(){
+	this.emitter.on.apply(this.emitter, arguments);
+	return this;
+};
+
+P.prototype.removeListener = function(){
+	this.emitter.removeListener.apply(this.emitter, arguments);
+	return this;
+};
+
+module.exports = P;
+},{"./ConnectionManager.js":11,"./WebRTCConnection.js":14,"./WebSocketConnection.js":15,"events":2,"its":4}],14:[function(require,module,exports){
+var Connection = require('./Connection.js'),
+	its = require('its');
+
+var nativeRTCPeerConnection = (typeof RTCPeerConnection !== 'undefined')? RTCPeerConnection :
+							  (typeof webkitRTCPeerConnection !== 'undefined')? webkitRTCPeerConnection :
+							  (typeof mozRTCPeerConnection !== 'undefined')? mozRTCPeerConnection :
+							  undefined;
+
+var nativeRTCSessionDescription = (typeof RTCSessionDescription !== 'undefined')? RTCSessionDescription :
+								  (typeof mozRTCSessionDescription !== 'undefined')? mozRTCSessionDescription :
+								  undefined;
+var nativeRTCIceCandidate = (typeof RTCIceCandidate !== 'undefined')? RTCIceCandidate :
+							(typeof mozRTCIceCandidate !== 'undefined')? mozRTCIceCandidate :
+							undefined;
+
+function WebRTCConnection(address, peers, rtcConnection, signalingChannel, options){
+	var self = this;
+
+	its.string(address);
+	its.defined(peers);
+	its.defined(rtcConnection);
+	its.defined(signalingChannel);
+
+	Connection.call(this, address, peers, options);
+
+	this.signalingChannel = signalingChannel;
+	this.rtcConnection = rtcConnection;
+	this.rtcDataChannel = rtcConnection.createDataChannel(this.PROTOCOL_NAME, {reliable: false});
+
+	this.close = rtcConnection.close.bind(rtcConnection);
+
+	this.rtcConnection.addEventListener('icecandidate', function(event){
+		if(!event.candidate) return;
+
+		self.signalingChannel.writeRelayIceCandidate(address, event.candidate);
+	});
+
+	this.rtcDataChannel.addEventListener('message', function(message){
+		// console.log('rtcDataChannel emit message');
+		self.readRaw(message.data);
+	});
+
+	this.rtcDataChannel.addEventListener('open', function(event){
+		// console.log('rtcDataChannel emit open');
+		self.emitter.emit('open', event);
+	});
+
+	this.rtcDataChannel.addEventListener('error', function(event){
+		// console.log('rtcDataChannel emit error');
+		self.emitter.emit('error', event);
+	});
+
+	this.rtcDataChannel.addEventListener('close', function(event){
+		// console.log('rtcDataChannel emit close');
+		// new Image().src = 'http://localhost:7000/?rtcDataChannel emit close';
+		self.emitter.emit('close', event);
+	});
+
+	this.rtcDataChannel.addEventListener('removestream', function(event){
+		// console.log('rtcDataChannel emit removestream');
+		// new Image().src = 'http://localhost:7000/?rtcDataChannel emit removestream';
+		self.emitter.emit('removestream', event);
+	});
+
+	this.rtcDataChannel.addEventListener('icestatechange', function(event){
+		// console.log('rtcDataChannel emit icestatechange');
+		// new Image().src = 'http://localhost:7000/?rtcDataChannel emit nicestatechange';
+		self.emitter.emit('icestatechange', event);
+	});
+
+	this.rtcDataChannel.addEventListener('icechange', function(event){
+		// console.log('rtcDataChannel emit onicechange');
+		// new Image().src = 'http://localhost:7000/?rtcDataChannel emit icechange';
+		self.emitter.emit('icechange', event);
+	});
+}
+
+var DEFAULT_RTC_CONFIGURATION = null;
+var DEFAULT_MEDIA_CONSTRAINTS = {
+	optional: [{RtpDataChannels: true}],
+    mandatory: {
+        OfferToReceiveAudio: false,
+        OfferToReceiveVideo: false
+    }
+};
+
+WebRTCConnection.create = function(config, peers, signalingChannel, options){
+	var rtcConfiguration = config.rtcConfiguration || DEFAULT_RTC_CONFIGURATION,
+		mediaConstraints = config.mediaConstraints || DEFAULT_MEDIA_CONSTRAINTS,
+		rtcConnection = new nativeRTCPeerConnection(rtcConfiguration, mediaConstraints);
+
+	return new WebRTCConnection(config.address, peers, rtcConnection, signalingChannel, options);
+};
+
+WebRTCConnection.prototype = Object.create(Connection.prototype);
+
+WebRTCConnection.prototype.writeRaw = function(message){
+	switch(this.rtcDataChannel.readyState){
+		case 'connecting':
+			throw new Error('Can\'t send a message while RTCDataChannel connecting');
+		case 'open':
+			this.rtcDataChannel.send(message);
+			break;
+		case 'closing':
+		case 'closed':
+			throw new Error('Can\'t send a message while RTCDataChannel is closing or closed');
+	}
+};
+
+WebRTCConnection.prototype.readAnswer = function(description){
+	var rtcSessionDescription = new nativeRTCSessionDescription(description);
+
+	this.rtcConnection.setRemoteDescription(rtcSessionDescription);
+};
+
+WebRTCConnection.prototype.readOffer = function(description){
+	var rtcSessionDescription = new nativeRTCSessionDescription(description);
+
+	this.rtcConnection.setRemoteDescription(rtcSessionDescription);
+};
+
+WebRTCConnection.prototype.readIceCandidate = function(candidate){
+	var emitter = this.emitter;
+	this.rtcConnection.addIceCandidate(new nativeRTCIceCandidate(candidate));
+};
+
+WebRTCConnection.prototype.writeAnswer = function(){
+	var emitter = this.emitter,
+		address = this.address,
+		rtcConnection = this.rtcConnection,
+		signalingChannel = this.signalingChannel;
+
+	function onError(err){ emitter.emit('error', err); }
+
+	rtcConnection.createAnswer(function(description){
+		rtcConnection.setLocalDescription(description, function(){
+			signalingChannel.writeRelayAnswer(address, description);
+		}, onError);
+	}, onError);
+};
+
+WebRTCConnection.prototype.writeOffer = function(config){
+	var emitter = this.emitter,
+		address = this.address,
+		rtcConnection = this.rtcConnection,
+		signalingChannel = this.signalingChannel;
+
+	function onError(err){ emitter.emit('error', err); }
+
+	rtcConnection.createOffer(function(description){
+		rtcConnection.setLocalDescription(description, function(){
+			signalingChannel.writeRelayOffer(address, description, config.offerData);
+		}, onError);
+	}, onError, config.mediaConstraints || DEFAULT_MEDIA_CONSTRAINTS);
+};
+
+WebRTCConnection.prototype.getReadyState = function(){
+	return this.rtcDataChannel.readyState;
+};
+
+
+// Solves the circular dependency with Connection.js
+Connection.createWebRTCConnection = WebRTCConnection.create;
+
+module.exports = WebRTCConnection;
+},{"./Connection.js":10,"its":4}],15:[function(require,module,exports){
+var Connection = require('./Connection.js');
+
+function WebSocketConnection(address, peers, webSocket, options){
+	var self = this;
+
+	Connection.call(this, address, peers, options);
+
+	this.webSocket = webSocket;
+	
+	this.close = webSocket.close.bind(webSocket);
+
+	this.webSocket.addEventListener('message', function(message){
+		self.readRaw(message.data);
+	});
+
+	this.webSocket.addEventListener('open', function(event){
+		self.emitter.emit('open', event);
+	});
+
+	this.webSocket.addEventListener('error', function(event){
+		self.emitter.emit('error', event);
+	});
+
+	this.webSocket.addEventListener('close', function(event){
+		self.emitter.emit('close', event);
+	});
+}
+
+WebSocketConnection.create = function(address, peers, options){
+	var webSocket = new WebSocket(address, WebSocketConnection.prototype.PROTOCOL_NAME);
+	return new WebSocketConnection(address, peers, webSocket, options);
+};
+
+WebSocketConnection.prototype = Object.create(Connection.prototype);
+WebSocketConnection.prototype.writeRaw = function(message){
+	switch(this.webSocket.readyState){
+		case WebSocket.CONNECTING:
+			throw new Error("Can't send a message while WebSocket connecting");
+
+		case WebSocket.OPEN:
+			this.webSocket.send(message);
+			break;
+
+		case WebSocket.CLOSING:
+		case WebSocket.CLOSED:
+			throw new Error("Can't send a message while WebSocket is closing or closed");
+	}
+};
+
+WebSocketConnection.prototype.getReadyState = function(){
+	switch(this.webSocket.readyState){
+		case WebSocket.CONNECTING:
+			return 'connecting';
+		case WebSocket.OPEN:
+			return 'open';
+		case WebSocket.CLOSING:
+			return 'closing';
+		case WebSocket.CLOSED:
+			return 'closed';
+	}
+};
+
+module.exports = WebSocketConnection;
+},{"./Connection.js":10}],16:[function(require,module,exports){
 (function (process){
 /** @license MIT License (c) copyright 2011-2013 original author or authors */
 
@@ -2674,15 +2766,16 @@ function Modal(opts, inject) {
 }
 
 Modal.closeAll = Modal.prototype.close = function () {
-  utils.trace('Closed overlay');
   // Close any open modal.
   var openedModal = document.querySelector('.md-show');
   if (openedModal) {
     openedModal.classList.remove('md-show');
+    utils.trace('Closed modal');
   }
   // TODO: Wait until transition end.
   setTimeout(function () {
     document.body.classList.remove('galaxy-overlayed');
+    utils.trace('Hid overlay');
   }, 150);
 };
 
@@ -2693,11 +2786,11 @@ Modal.injectOverlay = function () {
     var d = document.createElement('div');
     d.className = 'md-overlay';
     document.body.appendChild(d);
+    utils.trace('Added overlay');
   }
 };
 
 Modal.prototype.html = function () {
-  utils.trace('Created modal DOM');
   var d = document.createElement('div');
   d.id = 'modal-' + this.id;
   d.className = 'md-modal md-effect-1 ' + (this.classes || '');
@@ -2709,6 +2802,9 @@ Modal.prototype.html = function () {
       '<div>' + this.content + '</div>' +
     '</div>'
   );
+
+  utils.trace('Created modal DOM');
+
   return d;
 };
 
@@ -2732,6 +2828,7 @@ Modal.prototype.inject = function () {
 
 Modal.prototype.open = function () {
   return new Promise(function () {
+    utils.trace('Opened modal');
     return this.el.classList.add('md-show');
   }.bind(this));
 };
@@ -2867,15 +2964,20 @@ function toggleFullScreen() {
 
 
 function lockOrientation(orientation) {
-  var lo = (window.screen.LockOrientation ||
-    window.screen.mozLockOrientation ||
-    window.screen.webkitLockOrientation ||
-    window.screen.msLockOrientation);
-  if (!lo) {
-    return warn('Orientation could not be locked');
+  // Must check each individual because of a Firefox TypeError
+  if ('lockOrientation' in window.screen) {
+    return window.screen.lockOrientation(orientation);
   }
-
-  return lo(orientation);
+  if ('mozLockOrientation' in window.screen) {
+    return window.screen.mozLockOrientation(orientation);
+  }
+  if ('webkitLockOrientation' in window.screen) {
+    return window.screen.webkitLockOrientation(orientation);
+  }
+  if ('msLockOrientation' in window.screen) {
+    return window.screen.msLockOrientation(orientation);
+  }
+  return warn('Orientation could not be locked');
 }
 
 
