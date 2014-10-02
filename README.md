@@ -4,6 +4,8 @@ A JavaScript library for controlling an HTML5 game using WebRTC (falling back to
 
 Used in conjunction with [galaxy.js](https://github.com/mozilla/galaxy.js).
 
+> __Note:__ This project is not ready for prime time. Not an official Mozilla project. Pre-alpha everything. Anything and everything at your own risk.
+
 
 ## Downloads
 
