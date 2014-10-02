@@ -49,21 +49,17 @@ Ensure you have installed the Node dependencies:
 
     npm install
 
-To rebuild (compile and minify) the scripts while developing and serve the files from a local server:
+1. To rebuild (compile and minify) the scripts while developing and serve the files from a local server:
 
-    npm run-script dev
+        npm run-script dev
 
-Alternatively:
+2. In another terminal session, start up the signalling server (__plink-server__):
 
-    NODE_ENVIRONMENT='development' gulp dev serve
+        npm run-script signalling-server
 
-In another terminal session, start up the signalling server (__plink-server__):
+3. Load an [example game](http://localhost:3000/examples/HTML5-Keen/?1234)
 
-    npm run-script signalling-server
-
-Alternatively:
-
-    ./node_modules/plink-server/bin/plink-server
+4. Load the [Nintendo™-inspired controller](http://localhost:3000/examples/HTML5-Keen/?1234)
 
 
 ## Distribution
