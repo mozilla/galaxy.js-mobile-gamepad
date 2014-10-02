@@ -121,7 +121,7 @@ Gamepad.prototype._reverse_url = function (routeName) {
  * @returns {Promise}
  * @memberOf Gamepad
  */
-Gamepad.prototype._handshake = function (peerKey) {
+Gamepad.prototype._pair = function (peerKey) {
   return new Promise(function (resolve, reject) {
     if (!peerKey) {
       peerKey = utils.getPeerKey();  // The host key.
@@ -134,14 +134,46 @@ Gamepad.prototype._handshake = function (peerKey) {
     var plink = Plink.create();
     trace('Waiting for peer to connect');
 
-
     // 2. Connect to signalling server (`plink-server`).
     var link = plink.connect(settings.WS_URL);
 
     // 3. `link` emits `open` event (no event listener needed).
-    // 4. We tell the signalling server our shared peer key (below).
-    // 5. `link` emits `message` event: {type: "key set", key: "1234"}
-    // 6. Once
+
+    // 4. Send this message containing our peer key *to* the signalling server:
+    //
+    //    {
+    //       "type": "set key",
+    //       "key": "1234"
+    //    }
+    //
+    // Other peers can then use the key to connect to this game via the the
+    // signalling server. Notice: this does not need to happen inside an
+    // `open` event listener.
+    link.setKey(peerKey).then(function () {
+      trace('Sent message to signalling server: ' +
+        JSON.stringify({type: 'set key', key: peerKey}));
+    }).catch(function (err) {
+      error('Failed to send peer key to signalling server: ' + err);
+    });
+
+    // 5. `link` emits this `message` *from* signalling server:
+    //
+    //    {
+    //       "type": "key set",
+    //       "key": "1234"
+    //    }
+    //
+
+    // 6. We wait for a peer to send a session description protocol (SDP)
+    // message to the signalling server.
+
+    // 7. WebRTC takes over and we do the offer/answer dance. And that's
+    // where `RTCPeerConnection` data channels come from.
+
+    // 8. `RTCPeerConnection` emits `open` event when a peer is connected.
+
+
+    // Event listeners for the signalling server.
 
     // `connection` will fire when a peer has connected using the peer key.
     link.on('connection', function (peer) {
@@ -149,6 +181,7 @@ Gamepad.prototype._handshake = function (peerKey) {
         (numReattempts ? ' (reattempt #' + numReattempts++ + ')' : ''));
       resolve(peer);
 
+      // Event listeners for `RTCPeerConnection`.
       peer.on('open', function () {
         trace('[' + peer.address + '] Opened peer connection to controller');
       }).on('message', function (msg) {
@@ -202,31 +235,12 @@ Gamepad.prototype._handshake = function (peerKey) {
       // TODO: Reconnect to signalling server (#60).
       warn('Connection lost to signalling server');  // Not peer connection
     });
-
-    // Set a key. Other peers can use to connect to this browser using this
-    // key via the connected signalling server. (This returns a Promise
-    // resolving if the operation succeeded.)
-    //
-    // Send this message to the signalling server:
-    //
-    //   {
-    //     "type": "set key",
-    //     "key": "<peerKey>"
-    //   }
-    //
-    // This could go in `link`'s `open` event listener, but this works too.
-    link.setKey(peerKey).then(function () {
-      trace('Sent message to signalling server: ' +
-        JSON.stringify({type: 'set key', key: peerKey}));
-    }).catch(function (err) {
-      error('Failed to send peer key to signalling server: ' + err);
-    });
   }.bind(this));
 };
 
 
 /**
- * Connect to a controller using a shared peer key.
+ * Prompt the user to pair a controller and open a connection for pairing.
  *
  * Handshake with the WebSocket signalling server, listen for and establish a
  * a peer connection (via WebRTC's `RTCPeerConnection`), and relay messages
@@ -279,7 +293,7 @@ Gamepad.prototype.pair = function (peerKey) {
       utils.injectCSS({href: stylesheet});
     });
 
-    return this._handshake(peerKey).then(function (peer) {
+    return this._pair(peerKey).then(function (peer) {
       trace('[' + peer.address + '] Paired to controller');
     }.bind(this)).then(function () {
       this.modal.close();

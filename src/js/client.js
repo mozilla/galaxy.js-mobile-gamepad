@@ -65,9 +65,13 @@ function connect() {
     var peerKey = utils.getPeerKey();
     trace('Peer key: ' + peerKey);
 
+    // 1. Create a root `plink` instance.
     var plink = Plink.create();  // Returns a new `Plink` instance.
 
     trace('Attempting to connect to host');
+
+    // 2. Connect to signalling server (`plink-server`).
+    var link = plink.connect(settings.WS_URL);
 
     // This opens a connection via `P` to the signalling server
     // (`plink-server`), which locally creates a `WebSocketConnection`,
@@ -76,8 +80,38 @@ function connect() {
     // It then passes that connection to a new `PlinkServer` instance, and
     // that's what `link` is. `PlinkServer` sets event listeners for
     // `message` and `open`.
-    var link = plink.connect(settings.WS_URL);
 
+    // 3. Send this message containing our peer key *to* the signalling server:
+    //
+    //    {
+    //       "type": "use key",
+    //       "key": "1234"
+    //    }
+    //
+    // Notice: this does not need to happen inside an `open` event listener.
+    link.useKey(peerKey).then(function () {
+      trace('Sent message to signalling server: ' +
+        JSON.stringify({type: 'use key', key: peerKey}));
+    }).catch(function (err) {
+      error('Failed to send peer key to signalling server: ' + err);
+    });
+
+    // 4. `link` emits this `message` *from* signalling server containing a
+    // unique identifier (specifically, a UUID) for this peer:
+    //
+    //    {
+    //       "type": "address",
+    //       "key": "1234",
+    //       "address": "8b14862d-9894-2131-433a-ae2cbef85698"
+    //    }
+    //
+
+    // 5. WebRTC takes over and we do the offer/answer dance. And that's
+    // where `RTCPeerConnection` data channels come from.
+
+    // 6. `RTCPeerConnection` emits `open` event when the peer has connected.
+
+    // Event listeners for the signalling server.
     link.on('connection', function (peer) {
       trace('[' + peer.address + '] Connected to signalling server');
 
@@ -121,21 +155,6 @@ function connect() {
     // * https://bugzilla.mozilla.org/show_bug.cgi?id=1009124
     window.addEventListener('beforeunload', function () {
       send({type: 'bye'});
-    });
-
-    // Send this message to the signalling server:
-    //
-    //   {
-    //     "type": "use key",
-    //     "key": "<peerKey>"
-    //   }
-    //
-    // This could go in `link`'s `open` event listener, but this works too.
-    link.useKey(peerKey).then(function () {
-        trace('Sent message to signalling server: ' +
-          JSON.stringify({type: 'use key', key: peerKey}));
-    }).catch(function (err) {
-      error('Failed to send peer key to signalling server: ' + err);
     });
   });
 }
