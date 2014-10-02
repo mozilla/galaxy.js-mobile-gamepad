@@ -128,28 +128,100 @@ Gamepad.prototype._handshake = function (peerKey) {
     }
     trace('Peer key: ' + peerKey);
 
-    // Create a root `plink` instance.
+    var numReattempts = 0;
+
+    // 1. Create a root `plink` instance.
     var plink = Plink.create();
     trace('Waiting for peer to connect');
 
-    // Connect to `plink-server` and await connection using the peer ID.
+
+    // 2. Connect to signalling server (`plink-server`).
     var link = plink.connect(settings.WS_URL);
+
+    // 3. `link` emits `open` event (no event listener needed).
+    // 4. We tell the signalling server our shared peer key (below).
+    // 5. `link` emits `message` event: {type: "key set", key: "1234"}
+    // 6. Once
+
+    // `connection` will fire when a peer has connected using the peer key.
     link.on('connection', function (peer) {
+      trace('[' + peer.address + '] Connected to signalling server' +
+        (numReattempts ? ' (reattempt #' + numReattempts++ + ')' : ''));
       resolve(peer);
+
+      peer.on('open', function () {
+        trace('[' + peer.address + '] Opened peer connection to controller');
+      }).on('message', function (msg) {
+        if (typeof msg === 'object' && msg.type) {
+          switch (msg.type) {
+            case 'bye':
+              // TODO: This should instead fire an event that the developer
+              // can then handle in the game (will likely want to pause too).
+              // We could offer Galaxy-styled toast notifications or modals.
+              warn('[' + peer.address +
+                '] Lost peer connection to controller');
+              numReattempts++;
+              return;
+            case 'state':
+              trace('[' + peer.address + '] Received new controller state ' +
+                'from peer: ' +
+                (typeof msg === 'object' ? JSON.stringify(msg) : msg));
+              return this._updateState(msg.data);
+            default:
+              return warn('[' + peer.address + '] Received peer message of ' +
+                'unexpected type (' + (msg.type || '') + '): ' +
+                (typeof msg === 'object' ? JSON.stringify(msg) : msg));
+          }
+        }
+
+        warn('[' + peer.address + '] Received unexpected peer message: ' +
+          (typeof msg === 'object' ? JSON.stringify(msg) : msg));
+      }.bind(this)).on('error', function (err) {
+        error('[' + peer.address + '] Peer error: ' +
+          (typeof err === 'object' ? JSON.stringify(err) : err));
+        reject(peer);
+      }).on('close', function () {
+        trace('[' + peer.address + '] Peer closed');
+      });
+
+      // Workaround because `RTCPeerConnection.onclose` ain't work in browsers:
+      // * https://code.google.com/p/webrtc/issues/detail?id=1676
+      // * https://bugzilla.mozilla.org/show_bug.cgi?id=881337
+      // * https://bugzilla.mozilla.org/show_bug.cgi?id=1009124
+      window.addEventListener('beforeunload', function () {
+        peer.send({type: 'bye'});
+      });
+   }.bind(this)).on('message', function (msg) {
+    trace('Received message from signalling server: ' +
+      JSON.stringify(msg));
+   }).on('error', function (err) {
+      error('Could not connect to signalling server' +
+        settings.DEBUG ? (': ' + JSON.stringify(err)) : '');
+      reject(err);
     }).on('close', function () {
       // TODO: Reconnect to signalling server (#60).
-      warn('Connection lost with signalling server');
-    }).on('error', function (err) {
-      error('Could not connect to `plink-server`: ' +
-        JSON.stringify(err));
-      reject(err);
+      warn('Connection lost to signalling server');  // Not peer connection
     });
 
     // Set a key. Other peers can use to connect to this browser using this
-    // key via the connected `plink-server`.
-    // (This returns a Promise on whether the operation succeeded.)
-    link.setKey(peerKey);
-  });
+    // key via the connected signalling server. (This returns a Promise
+    // resolving if the operation succeeded.)
+    //
+    // Send this message to the signalling server:
+    //
+    //   {
+    //     "type": "set key",
+    //     "key": "<peerKey>"
+    //   }
+    //
+    // This could go in `link`'s `open` event listener, but this works too.
+    link.setKey(peerKey).then(function () {
+      trace('Sent message to signalling server: ' +
+        JSON.stringify({type: 'set key', key: peerKey}));
+    }).catch(function (err) {
+      error('Failed to send peer key to signalling server: ' + err);
+    });
+  }.bind(this));
 };
 
 
@@ -194,7 +266,10 @@ Gamepad.prototype.pair = function (peerKey) {
     }, true);
 
     this.modal.open().then(function () {
-      trace('Modal opened');
+      trace('Awaiting player to pair device');
+    }).catch(function () {
+      warn('Failed to open modal');
+      reject();
     });
 
     [
@@ -205,40 +280,7 @@ Gamepad.prototype.pair = function (peerKey) {
     });
 
     return this._handshake(peerKey).then(function (peer) {
-      trace('[' + peer.address + '] Connected');
-
-      peer.on('open', function () {
-        trace('[' + peer.address + '] Opened');
-        resolve(peer);
-      });
-
-      peer.on('close', function () {
-        trace('[' + peer.address + '] Closed');
-      });
-
-      peer.on('error', function (err) {
-        error('[' + peer.address + '] Error: ' +
-          (typeof err === 'object' ? JSON.stringify(err) : err));
-        reject(peer);
-      });
-
-      peer.on('message', function (msg) {
-        if (typeof msg === 'object' && msg.type) {
-          switch (msg.type) {
-            case 'state':
-              trace('[' + peer.address + '] Received new controller state: ' +
-                (typeof msg === 'object' ? JSON.stringify(msg) : msg));
-              return this._updateState(msg.data);
-            default:
-              return warn('[' + peer.address + '] Received message of ' +
-                'unexpected type (' + (msg.type || '') + '): ' +
-                (typeof msg === 'object' ? JSON.stringify(msg) : msg));
-          }
-        }
-
-        warn('[' + peer.address + '] Received unexpected message: ' +
-          (typeof msg === 'object' ? JSON.stringify(msg) : msg));
-      }.bind(this));
+      trace('[' + peer.address + '] Paired to controller');
     }.bind(this)).then(function () {
       this.modal.close();
     }.bind(this)).catch(function (err) {
@@ -291,7 +333,8 @@ Gamepad.prototype.hidePairingScreen = function () {
  * @param {*} data Data to pass to the listener.
  */
 Gamepad.prototype._emit = function (eventName, data) {
-  // For now, skip.
+  // TODO: Handle proper event emission (#44).
+  trace('Emit "' + eventName + '": ' + data);
   // (this.listeners[eventName] || []).forEach(function (listener) {
   //   listener.apply(listener, [data]);
   // });

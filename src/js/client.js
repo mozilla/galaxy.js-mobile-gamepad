@@ -61,62 +61,91 @@ document.addEventListener('click', function (e) {
 // Create a root `plink` instance.
 function connect() {
   return new Promise(function (resolve, reject) {
-    var plink = Plink.create();
-
     // Get the key (from the path or query string).
     var peerKey = utils.getPeerKey();
     trace('Peer key: ' + peerKey);
 
+    var plink = Plink.create();  // Returns a new `Plink` instance.
+
     trace('Attempting to connect to host');
 
-    // Connect to `plink-server` and await connection using the peer ID.
+    // This opens a connection via `P` to the signalling server
+    // (`plink-server`), which locally creates a `WebSocketConnection`,
+    // adds itself as a peer, and adds an event listener for `close`.
+    //
+    // It then passes that connection to a new `PlinkServer` instance, and
+    // that's what `link` is. `PlinkServer` sets event listeners for
+    // `message` and `open`.
     var link = plink.connect(settings.WS_URL);
 
-    // Set a key. Other peers can use to connect to this browser using this
-    // key via the connected `plink-server`.
-    // (This returns a Promise on whether the operation succeeded.)
-    link.useKey(peerKey);
-
     link.on('connection', function (peer) {
-      trace('[' + peer.address + '] Connected');
+      trace('[' + peer.address + '] Connected to signalling server');
 
-      peer.on('message', function (msg) {
-        trace('[' + peer.address + '] Received message: ' +
-          (typeof msg === 'object' ? JSON.stringify(msg) : msg));
-      });
-
+      // Event listeners for `RTCPeerConnection`.
       peer.on('open', function () {
-        trace('[' + peer.address + '] Opened');
+        trace('[' + peer.address + '] Opened peer connection to game');
         resolve(peer);
-      });
+      }).on('message', function (msg) {
+        if (msg.type === 'bye') {
+          warn('[' + peer.address + '] Lost peer connection to controller');
+          return;
+        }
 
-      peer.on('close', function () {
-        // Connection lost with host.
-        // TODO: Reconnect to host (#61).
-        trace('[' + peer.address + '] Closed');
-      });
-
-      peer.on('error', function (err) {
-        error('[' + peer.address + '] Error: ' +
+        trace('[' + peer.address + '] Received peer message: ' +
+          (typeof msg === 'object' ? JSON.stringify(msg) : msg));
+      }).on('error', function (err) {
+        error('[' + peer.address + '] Peer error: ' +
           (typeof err === 'object' ? JSON.stringify(err) : err));
         reject(err);
+      }).on('close', function () {
+        // Peer connection lost to host. (Unfortunately, a few browser bugs
+        // prevent this from firing; see below.)
+        trace('[' + peer.address + '] Peer closed');
       });
 
+    }).on('message', function (msg) {
+      trace('Received message from signalling server: ' +
+        JSON.stringify(msg));
+    }).on('error', function (err) {
+      error('Could not connect to signalling server' +
+        settings.DEBUG ? (': ' + JSON.stringify(err)) : '');
+      reject(err);
     }).on('close', function () {
       // TODO: Reconnect to signalling server (#60).
-      warn('Connection lost with signalling server');
-    }).on('error', function (err) {
-      error('Could not connect to `plink-server`: ' +
-        JSON.stringify(err));
-      reject(err);
+      warn('Connection to signalling server lost');  // Not peer connection
+    });
+
+    // Workaround because `RTCPeerConnection.onclose` ain't work in browsers:
+    // * https://code.google.com/p/webrtc/issues/detail?id=1676
+    // * https://bugzilla.mozilla.org/show_bug.cgi?id=881337
+    // * https://bugzilla.mozilla.org/show_bug.cgi?id=1009124
+    window.addEventListener('beforeunload', function () {
+      send({type: 'bye'});
+    });
+
+    // Send this message to the signalling server:
+    //
+    //   {
+    //     "type": "use key",
+    //     "key": "<peerKey>"
+    //   }
+    //
+    // This could go in `link`'s `open` event listener, but this works too.
+    link.useKey(peerKey).then(function () {
+        trace('Sent message to signalling server: ' +
+          JSON.stringify({type: 'use key', key: peerKey}));
+    }).catch(function (err) {
+      error('Failed to send peer key to signalling server: ' + err);
     });
   });
 }
 
 connect().then(function (peer) {
+  trace('[' + peer.address + '] Paired to game');
+
   // Swap out the `send` function with one that does actual sending.
   send = function send(msg) {
-    trace('[' + peer.address + '] Sent message: ' +
+    trace('[' + peer.address + '] Sent peer message: ' +
       (typeof msg === 'object' ? JSON.stringify(msg) : msg));
     peer.send(msg);
   };
