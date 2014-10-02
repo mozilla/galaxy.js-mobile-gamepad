@@ -118,15 +118,20 @@ function toggleFullScreen() {
 
 
 function lockOrientation(orientation) {
-  var lo = (window.screen.LockOrientation ||
-    window.screen.mozLockOrientation ||
-    window.screen.webkitLockOrientation ||
-    window.screen.msLockOrientation);
-  if (!lo) {
-    return warn('Orientation could not be locked');
+  // Must check each individual because of a Firefox TypeError
+  if ('lockOrientation' in window.screen) {
+    return window.screen.lockOrientation(orientation);
   }
-
-  return lo(orientation);
+  if ('mozLockOrientation' in window.screen) {
+    return window.screen.mozLockOrientation(orientation);
+  }
+  if ('webkitLockOrientation' in window.screen) {
+    return window.screen.webkitLockOrientation(orientation);
+  }
+  if ('msLockOrientation' in window.screen) {
+    return window.screen.msLockOrientation(orientation);
+  }
+  return warn('Orientation could not be locked');
 }
 
 
