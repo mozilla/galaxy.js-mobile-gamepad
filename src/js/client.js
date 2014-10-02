@@ -78,8 +78,8 @@ function connect() {
     // adds itself as a peer, and adds an event listener for `close`.
     //
     // It then passes that connection to a new `PlinkServer` instance, and
-    // that's what `link` is. `PlinkServer` sets event listeners for
-    // `message` and `open`.
+    // that's what `link` is. `PlinkServer`, behind the scenes, sets event
+    // listeners for `message` and `open`.
 
     // 3. Send this message containing our peer key *to* the signalling server:
     //
@@ -88,12 +88,25 @@ function connect() {
     //       "key": "1234"
     //    }
     //
-    // Notice: this does not need to happen inside an `open` event listener.
-    link.useKey(peerKey).then(function () {
-      trace('Sent message to signalling server: ' +
-        JSON.stringify({type: 'use key', key: peerKey}));
-    }).catch(function (err) {
-      error('Failed to send peer key to signalling server: ' + err);
+    // Or "set key" if we are online but the host is not.
+    link.on('open', function () {
+      trace('Connected to signalling server');
+
+      link.useKey(peerKey).then(function () {
+        trace('Sent message to signalling server: ' +
+          JSON.stringify({type: 'use key', key: peerKey}));
+      }).catch(function (err) {
+        warn('Host is offline; "use key" message rejected by signalling ' +
+          'server: ' + err);
+
+        link.setKey(peerKey).then(function () {
+          trace('Sent message to signalling server: ' +
+            JSON.stringify({type: 'set key', key: peerKey}));
+        }).catch(function (err) {
+          error('Failed to send "set key" mesage to signalling server: ' +
+            err);
+        });
+      });
     });
 
     // 4. `link` emits this `message` *from* signalling server containing a
@@ -113,7 +126,7 @@ function connect() {
 
     // Event listeners for the signalling server.
     link.on('connection', function (peer) {
-      trace('[' + peer.address + '] Connected to signalling server');
+      trace('[' + peer.address + '] Found peer via signalling server');
 
       // Event listeners for `RTCPeerConnection`.
       peer.on('open', function () {
@@ -121,7 +134,7 @@ function connect() {
         resolve(peer);
       }).on('message', function (msg) {
         if (msg.type === 'bye') {
-          warn('[' + peer.address + '] Lost peer connection to controller');
+          warn('[' + peer.address + '] Lost peer connection to game');
           return;
         }
 
