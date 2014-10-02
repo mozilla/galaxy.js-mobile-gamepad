@@ -57,9 +57,9 @@ Ensure you have installed the Node dependencies:
 
         npm run-script signalling-server
 
-3. Load an [example game](http://localhost:3000/examples/HTML5-Keen/?1234)
+3. Load an [example game](http://localhost:3000/examples/HTML5-Keen/?1234).
 
-4. Load the [Nintendo™-inspired controller](http://localhost:3000/examples/HTML5-Keen/?1234)
+4. Load the [Nintendo™-inspired controller](http://localhost:3000/examples/HTML5-Keen/?1234).
 
 
 ## Distribution
