@@ -230,17 +230,21 @@ Gamepad.prototype._pair = function (peerKey) {
         trace('[' + peer.address + '] Peer closed');
       });
 
-      // Workaround because `RTCPeerConnection.onclose` ain't work in browsers:
-      // * https://code.google.com/p/webrtc/issues/detail?id=1676
-      // * https://bugzilla.mozilla.org/show_bug.cgi?id=881337
-      // * https://bugzilla.mozilla.org/show_bug.cgi?id=1009124
       window.addEventListener('beforeunload', function () {
-        peer.send({type: 'bye'});
+        // Close WebSocket connection to signalling server.
+        link.onramp.close();
+        trace('Closed connection to signalling server');
+
+        // Workaround because `RTCPeerConnection.onclose` ain't work in browsers:
+        // * https://code.google.com/p/webrtc/issues/detail?id=1676
+        // * https://bugzilla.mozilla.org/show_bug.cgi?id=881337
+        // * https://bugzilla.mozilla.org/show_bug.cgi?id=1009124
+        send({type: 'bye'});
       });
-   }.bind(this)).on('message', function (msg) {
-    trace('Received message from signalling server: ' +
-      JSON.stringify(msg));
-   }).on('error', function (err) {
+    }.bind(this)).on('message', function (msg) {
+      trace('Received message from signalling server: ' +
+        JSON.stringify(msg));
+    }).on('error', function (err) {
       error('Could not connect to signalling server' +
         settings.DEBUG ? (': ' + JSON.stringify(err)) : '');
       reject(err);
