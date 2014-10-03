@@ -163,7 +163,8 @@ Gamepad.prototype._pair = function (peerKey) {
           trace('Sent message to signalling server: ' +
             JSON.stringify({type: 'use key', key: peerKey}));
         }).catch(function (err) {
-          error('Failed to send "use key" mesage to signalling server: ' + err);
+          error('Failed to send "use key" mesage to signalling server: ' +
+            err);
         });
       });
     });
