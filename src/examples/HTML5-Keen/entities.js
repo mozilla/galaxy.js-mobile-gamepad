@@ -1,8 +1,8 @@
-/*------------------- 
+/*-------------------
 A player entity
 -------------------------------- */
 var OverworldPlayerEntity = me.ObjectEntity.extend({
- 
+
     isPlayer: true,
     godMode: false,
 
@@ -26,7 +26,7 @@ var OverworldPlayerEntity = me.ObjectEntity.extend({
 
         // set the default horizontal & vertical speed (accel vector)
         this.setVelocity(2.4, 15);
- 
+
         // me.debug.renderHitBox = true;
 
         // adjust the bounding box
@@ -126,14 +126,14 @@ var OverworldPlayerEntity = me.ObjectEntity.extend({
 
         // check & update player movement
         this.updateMovement();
- 
+
         // update animation if necessary
         if (this.vel.x!=0 || this.vel.y!=0) {
             // update objet animation
             this.parent(this);
             return true;
         }
-         
+
         // else inform the engine we did not perform
         // any update (e.g. position, animation)
         return false;
@@ -189,11 +189,11 @@ var OverworldLevelBlockEntity = me.ObjectEntity.extend({
 
 });
 
-/*------------------- 
+/*-------------------
 A player entity
 -------------------------------- */
 var PlayerEntity = me.ObjectEntity.extend({
- 
+
     isPlayer: true,
     godMode: false,
 
@@ -217,10 +217,10 @@ var PlayerEntity = me.ObjectEntity.extend({
 
         // call the constructor
         this.parent(x, y, settings);
- 
+
         // set the default horizontal & vertical speed (accel vector)
         this.setVelocity(2.4, 15);
- 
+
         // me.debug.renderHitBox = true;
 
         // adjust the bounding box
@@ -255,11 +255,11 @@ var PlayerEntity = me.ObjectEntity.extend({
 
         this.addAnimation ('die', [26,27]);
     },
- 
+
     /* -----
- 
+
     update the player pos
- 
+
     ------ */
     computeVelocity : function(vel) {
 
@@ -294,6 +294,16 @@ var PlayerEntity = me.ObjectEntity.extend({
     },
 
     update: function() {
+        if (pad.connected) {
+            me.input.triggerKeyEvent(me.input.KEY.LEFT, pad.state.left);
+            me.input.triggerKeyEvent(me.input.KEY.RIGHT, pad.state.right);
+            me.input.triggerKeyEvent(me.input.KEY.UP, pad.state.up);
+            me.input.triggerKeyEvent(me.input.KEY.DOWN, pad.state.down);
+
+            me.input.triggerKeyEvent(me.input.KEY.SPACE, pad.state.b);  // B: fire
+            me.input.triggerKeyEvent(me.input.KEY.X, pad.state.a);  // A: jump
+        }
+
         jsApp.mainPlayer = me.game.getEntityByName("mainPlayer")[0];
 
         // check for collision
@@ -351,7 +361,7 @@ var PlayerEntity = me.ObjectEntity.extend({
                 if ( this.randomBool ) {
                     this.pos.x += 1;
                 } else {
-                    this.pos.x -= 1;                    
+                    this.pos.x -= 1;
                 }
                 this.pos.y -= 4;
             }
@@ -382,8 +392,8 @@ var PlayerEntity = me.ObjectEntity.extend({
         }
 
             if (me.input.isKeyPressed('left')) {
-                
-                
+
+
                 // update the entity velocity
                 this.vel.x -= 0.3;
                 this.previousvel.x = 0;
@@ -482,7 +492,7 @@ var PlayerEntity = me.ObjectEntity.extend({
             me.audio.play('fall');
             this.fallingSound = true;
         }
-     
+
         if (me.input.isKeyPressed('left')) {
 
             this.setCurrentAnimation('walk_left');
@@ -498,8 +508,8 @@ var PlayerEntity = me.ObjectEntity.extend({
             this.vel.x += this.accel.x * me.timer.tick;
             this.orientation = 'right';
         } else {
-            
-            
+
+
             if ( this.landing || this.jumping ) {
                 // falling no input
                 this.vel.x = this.vel.x * 0.75;
@@ -507,7 +517,7 @@ var PlayerEntity = me.ObjectEntity.extend({
                 this.vel.x = 0;
             }
 
-            
+
             if ( this.orientation == 'left' ) {
                 this.setCurrentAnimation('stand_left');
             } else {
@@ -552,8 +562,8 @@ var PlayerEntity = me.ObjectEntity.extend({
             this.shooting = true;
 
             if ( this.inventory.ammo ) {
-                var bullet = new BulletEntity(this.pos.x, this.pos.y + 5, { image:'bullet', spritewidth: 16, direction: this.orientation }); // don't forget that the objectEntity constructor need parameters 
-                me.game.add(bullet, this.z); // it's better to specify the z value of the emitter object, so that both objects are on the same plan 
+                var bullet = new BulletEntity(this.pos.x, this.pos.y + 5, { image:'bullet', spritewidth: 16, direction: this.orientation }); // don't forget that the objectEntity constructor need parameters
+                me.game.add(bullet, this.z); // it's better to specify the z value of the emitter object, so that both objects are on the same plan
                 me.game.sort(); // sort the object array internally
                 me.audio.play('shoot');
                 this.inventory.ammo--;
@@ -588,7 +598,7 @@ var PlayerEntity = me.ObjectEntity.extend({
 
         // check & update player movement
         this.updateMovement();
-     
+
         if ( this.vel.y != 0 ) {
 
             if ( this.orientation == 'left' ) {
@@ -610,8 +620,8 @@ var PlayerEntity = me.ObjectEntity.extend({
 
         // else inform the engine we did not perform
         // any update (e.g. position, animation)
-        return false;       
-     
+        return false;
+
     },
 
     die: function() {
@@ -623,7 +633,7 @@ var PlayerEntity = me.ObjectEntity.extend({
 
         this.invisibleDeadKeen = new me.ObjectEntity(this.pos.x, this.pos.y, {image: 'keen', spritewidth: 10, spriteheight: 10} );
         this.invisibleDeadKeen.visible = false;
-        me.game.add(this.invisibleDeadKeen, this.z); // it's better to specify the z value of the emitter object, so that both objects are on the same plan 
+        me.game.add(this.invisibleDeadKeen, this.z); // it's better to specify the z value of the emitter object, so that both objects are on the same plan
         me.game.sort(); // sort the object array internally
 
         this.randomBool = !! Math.round(Math.random() * 1);
@@ -638,10 +648,10 @@ var PlayerEntity = me.ObjectEntity.extend({
         this.framesSinceExitCollision = 0;
 
         this.exitOverlay = new me.SpriteObject( exit.pos.x + 32, exit.pos.y - 36, me.loader.getImage('exit-overlay'), 33, 38 );
-        me.game.add( this.exitOverlay, this.z + 1); // it's better to specify the z value of the emitter object, so that both objects are on the same plan 
+        me.game.add( this.exitOverlay, this.z + 1); // it's better to specify the z value of the emitter object, so that both objects are on the same plan
         me.game.sort(); // sort the object array internally
     }
- 
+
 });
 
 var ExitEntity = me.InvisibleEntity.extend({
@@ -661,7 +671,7 @@ var ExitEntity = me.InvisibleEntity.extend({
     },
 
     onCollision: function(res, obj) {
-        
+
         if ( obj && obj.exit && !obj.exiting ) {
             obj.exit( this );
         }
@@ -695,7 +705,7 @@ var KeenCollectableEntity = me.CollectableEntity.extend({
         this.parent(x, y, settings);
 
     },
- 
+
     // this function is called by the engine, when
     // an object is touched by something (here collected)
     onCollision : function (res, obj) {
@@ -714,7 +724,7 @@ var KeenCollectableEntity = me.CollectableEntity.extend({
         // remove it
         me.game.remove(this);
     }
- 
+
 });
 
 /*----------------
@@ -774,7 +784,7 @@ var RaygunEntity = KeenCollectableEntity.extend({
     niceName: 'Raygun',
     sound: 'raygun-collect',
     spriteimage: 'raygun',
-    spritewidth: 16, 
+    spritewidth: 16,
 
     onCollision: function(res, obj) {
         this.parent(res, obj);
@@ -792,7 +802,7 @@ var PogoEntity = KeenCollectableEntity.extend({
     niceName: 'Pogo stick',
     sound: 'raygun-collect',
     spriteimage: 'pogo-stick',
-    spritewidth: 12, 
+    spritewidth: 12,
 
     onCollision: function(res, obj) {
         this.parent(res, obj);
@@ -898,7 +908,7 @@ var YorpEntity = EnemyEntity.extend({
         this.addAnimation ('look', [1,2,3,2]);
         this.addAnimation ('walk_right', [6,7]);
         this.addAnimation ('walk_left', [4,5]);
-        
+
         this.addAnimation ('cry', [8,9]);
 
         this.addAnimation ('die', [10]);
@@ -908,15 +918,15 @@ var YorpEntity = EnemyEntity.extend({
 
         this.startX = x;
         this.endX   = x+settings.width - settings.spritewidth; // size of sprite
-        
-        
+
+
         // make him start from the right
         this.pos.x = x + settings.width - settings.spritewidth;
         this.walkLeft = true;
 
         // walking & jumping speed
         this.setVelocity(0.2, 6);
-        
+
         // make it collidable
         this.collidable = true;
     },
@@ -935,7 +945,7 @@ var YorpEntity = EnemyEntity.extend({
                 this.framesSinceHop = 0;
             }
             this.framesSinceHop++;
-            
+
 
 
             var mainPlayer = me.game.getEntityByName("mainPlayer")[0];
@@ -982,7 +992,7 @@ var YorpEntity = EnemyEntity.extend({
 
         // check & update movement
         this.updateMovement();
-            
+
         if (this.vel.x!=0 ||this.vel.y!=0) {
             // update the object animation
             this.parent();
@@ -997,7 +1007,7 @@ var YorpEntity = EnemyEntity.extend({
         if ( this.alive ) {
             this.alive = false;
             this.setCurrentAnimation('die');
-            
+
             me.audio.play('yorp-die');
             this.framesSinceDeath = 0;
         }
@@ -1024,7 +1034,7 @@ var YorpEntity = EnemyEntity.extend({
 /*--------------
 A score HUD item
 --------------------- */
- 
+
 var ScoreObject = me.HUD_Item.extend({
     init: function(x, y) {
         // call the parent constructor
@@ -1032,13 +1042,13 @@ var ScoreObject = me.HUD_Item.extend({
         // create a font
         this.font = new me.BitmapFont("32x32_font", 32);
     },
- 
+
     // draw our score
     draw: function(context, x, y) {
         this.font.draw(context, 'LOL', this.pos.x + x, this.pos.y + y);
 
     }
- 
+
 });
 
 var BulletEntity = me.ObjectEntity.extend({
@@ -1080,7 +1090,7 @@ var BulletEntity = me.ObjectEntity.extend({
             }
         }
 
-        
+
         this.updateMovement();
 
         if ( this.vel.x == 0 ) {
@@ -1107,9 +1117,13 @@ var BulletEntity = me.ObjectEntity.extend({
 
         this.updateMovement();
         return true;
-        
+
     }
 });
+
+function padPlay() {
+    me.state.change(me.state.PLAY);
+}
 
 /*----------------------
     A title screen
@@ -1118,18 +1132,18 @@ var TitleScreen = me.ScreenObject.extend({
     // constructor
     init: function() {
         this.parent(true);
- 
+
         // title screen image
         this.title = null;
- 
+
         this.font = null;
         this.scrollerfont = null;
         this.scrollertween = null;
- 
+
         this.scroller = "A SMALL STEP BY STEP TUTORIAL FOR GAME CREATION WITH MELONJS       ";
         this.scrollerpos = 600;
     },
- 
+
     // reset function
     onResetEvent: function() {
         if (this.title == null) {
@@ -1138,29 +1152,31 @@ var TitleScreen = me.ScreenObject.extend({
             // font to display the menu items
             this.font = new me.BitmapFont("32x32_font", 32);
             this.font.set("left");
- 
+
             // set the scroller
             this.scrollerfont = new me.BitmapFont("32x32_font", 32);
             this.scrollerfont.set("left");
- 
+
         }
- 
+
         // reset to default value
         this.scrollerpos = 640;
- 
+
         // a tween to animate the arrow
         this.scrollertween = new me.Tween(this).to({
             scrollerpos: -2200
         }, 10000).onComplete(this.scrollover.bind(this)).start();
- 
+
         // enable the keyboard
         me.input.bindKey(me.input.KEY.ENTER, "enter", true);
- 
+        pad.on('buttonpress.start', padPlay);
+        pad.on('buttonpress.a', padPlay);
+
         // play something
         // me.audio.play("cling");
- 
+
     },
- 
+
     // some callback for the tween objects
     scrollover: function() {
         // reset to default value
@@ -1169,30 +1185,37 @@ var TitleScreen = me.ScreenObject.extend({
             scrollerpos: -2200
         }, 10000).onComplete(this.scrollover.bind(this)).start();
     },
- 
+
     // update function
     update: function() {
-        // enter pressed ?
+        // enter key pressed ?
         if (me.input.isKeyPressed('enter')) {
+            me.state.change(me.state.PLAY);
+        }
+        // START or A button pressed ?
+        if (pad.state.start ||
+            pad.state.a) {
             me.state.change(me.state.PLAY);
         }
         return true;
     },
- 
+
     // draw function
     draw: function(context) {
         context.drawImage(this.title, 0, 0);
- 
+
         this.font.draw(context, "PRESS ENTER TO PLAY", 20, 240);
         this.scrollerfont.draw(context, this.scroller, this.scrollerpos, 440);
     },
- 
+
     // destroy function
     onDestroyEvent: function() {
         me.input.unbindKey(me.input.KEY.ENTER);
- 
+        pad.off('buttonpress.start', padPlay);
+        pad.off('buttonpress.a', padPlay);
+
         //just in case
         this.scrollertween.stop();
     }
- 
+
 });

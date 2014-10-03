@@ -7,6 +7,9 @@
  *
  **/
 
+// Do not pause on blur
+me.sys.pauseOnBlur = false;
+
 // Resources
 var g_resources = [{
     name: 'mars',
@@ -223,12 +226,20 @@ var g_resources = [{
 }];
 
 
+window.pad = MobileGamepad.create();
+
 
 var jsApp = {
     /* ---
         Initialize the jsApp
         ---         */
     onload: function() {
+
+        pad.pair().then(function (controller) {
+          console.log('Connected to controller');
+        }).catch(function (e) {
+          console.error(e.stack ? e.stack : e);
+        });
 
         // init the video
         if (!me.video.init('jsapp', 320, 200, true, 'auto')) {
@@ -336,23 +347,11 @@ var KeenLevelLoader = function( level ) {
         me.game.addHUD(0, 430, 640, 60);
     };
 
-var pad;
-var padState = {};
 
 /* The in game stuff */
 var PlayScreen = me.ScreenObject.extend({
 
     init: function(){
-
-        pad = gamepad.init();
-
-        pad.pair().then(function (controller) {
-          console.log('Connected to controller');
-          console.log(pad.state);
-        }).catch(function (e) {
-          console.error(e.stack ? e.stack : e);
-        });
-
         this.parent(true);
     },
 
@@ -371,7 +370,7 @@ var PlayScreen = me.ScreenObject.extend({
         // add a new HUD item
         me.game.HUD.addItem('score', new ScoreObject(620, 10));
 
-        // make sure everyhting is in the right order
+        // make sure everything is in the right order
         me.game.sort();
 
     },
@@ -381,7 +380,7 @@ var PlayScreen = me.ScreenObject.extend({
     --- */
     onDestroyEvent: function() {
 
-         // remove the HUD
+        // remove the HUD
         me.game.disableHUD();
 
         // stop the current audio track
@@ -389,11 +388,14 @@ var PlayScreen = me.ScreenObject.extend({
     },
 
     update: function(){
-        if (pad && pad.state) {
+        if (pad.connected) {
             me.input.triggerKeyEvent(me.input.KEY.LEFT, pad.state.left);
             me.input.triggerKeyEvent(me.input.KEY.RIGHT, pad.state.right);
             me.input.triggerKeyEvent(me.input.KEY.UP, pad.state.up);
             me.input.triggerKeyEvent(me.input.KEY.DOWN, pad.state.down);
+
+            me.input.triggerKeyEvent(me.input.KEY.SPACE, pad.state.b);  // B: fire
+            me.input.triggerKeyEvent(me.input.KEY.X, pad.state.a);  // A: jump
         }
 
         var ctx = me.video.getScreenCanvas().getContext('2d');
