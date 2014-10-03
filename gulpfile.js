@@ -52,6 +52,8 @@ var paths = {
   }
 };
 
+var jsHostGlobal = 'MobileGamepad';
+
 
 function bundlify(files, standalone) {
   return browserify({
@@ -76,7 +78,7 @@ gulp.task('js-build', [
 
 gulp.task('js-build-host', function () {
   // Write to `src/js/host.bundle.js`.
-  return bundlify(paths.build.src.jsHost, 'gamepad')
+  return bundlify(paths.build.src.jsHost, jsHostGlobal)
     .bundle()
     .pipe(source(paths.build.dest.jsHost))
     .pipe(gulp.dest(paths.build.dest.js));
@@ -111,7 +113,7 @@ gulp.task('js-dist', [
 
 gulp.task('js-dist-host-raw', ['js-build'], function () {
   // // Write to `dist/js/gamepad-host.js`.
-  return bundlify(paths.build.src.jsHost, 'gamepad')
+  return bundlify(paths.build.src.jsHost, jsHostGlobal)
     .bundle()
     .pipe(source(paths.dist.raw.jsHost))
     .pipe(gulp.dest(paths.dist.raw.js));
@@ -127,7 +129,7 @@ gulp.task('js-dist-client-raw', function () {
 
 gulp.task('js-dist-host-min', function () {
   // Write to `dist/js/gamepad-host.min.js`.
-  var hostBundle = bundlify(paths.build.src.jsHost, 'gamepad');
+  var hostBundle = bundlify(paths.build.src.jsHost, jsHostGlobal);
 
   // Let's uglify before we browserify.
   hostBundle.transform({

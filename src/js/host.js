@@ -1,6 +1,8 @@
 (function (window, document) {
 'use strict';
 
+var Emitter = require('events').EventEmitter;
+
 var Plink = require('plink');
 // var Promise = require('./external/promise-1.0.0.js');  // jshint ignore:line
 
@@ -16,45 +18,52 @@ var warn = utils.warn;
 utils.polyfill();
 
 
-var _instance;
 var GAMEPAD_DEFAULT_OPTIONS = {
   // Which transport protocol to try first (choices: 'webrtc' or 'websocket').
   protocol: 'webrtc'
-};
-
-var gamepad = {
-  get: function () {
-    return _instance;
-  },
-  init: function (protocol) {
-    return _instance || new Gamepad({
-      protocol: protocol
-    });
-  }
 };
 
 
 /**
  * A library to control an HTML5 game using WebRTC or WebSocket.
  *
+ * @param {String} emmiter Event emmiter.
  * @param {String} opts Options for gamepad (e.g., protocol).
  * @exports Gamepad
  * @namespace Gamepad
  */
-function Gamepad(opts) {
-  _instance = this;
-
-  if (!opts) {
-    opts = {};
+function MobileGamepad(emitter, opts) {
+  if (!emitter) {
+    throw 'Emitter required!';
   }
+
+  this.emitter = emitter;
 
   // Set properties based on options passed in, using defaults if missing.
   Object.keys(GAMEPAD_DEFAULT_OPTIONS).forEach(function (key) {
     this[key] = key in opts ? opts[key] : GAMEPAD_DEFAULT_OPTIONS[key];
   }.bind(this));
 
+  this.connected = false;
   this.state = {};
 }
+
+
+/**
+ * A library to control an HTML5 game using WebRTC or WebSocket.
+ *
+ * @param {String} opts Options for gamepad (e.g., protocol).
+ * @memberOf Gamepad
+ */
+MobileGamepad.create = function (opts) {
+  if (!opts) {
+    opts = {};
+  }
+
+  var emitter = new Emitter();
+
+  return new MobileGamepad(emitter, opts);
+};
 
 
 /**
@@ -65,7 +74,7 @@ function Gamepad(opts) {
  * @returns {String}
  * @memberOf Gamepad
  */
-Gamepad.prototype.version = gamepad.version = settings.VERSION;
+MobileGamepad.prototype.version = settings.VERSION;
 
 
 /**
@@ -77,7 +86,7 @@ Gamepad.prototype.version = gamepad.version = settings.VERSION;
  * @returns {String}
  * @memberOf Gamepad
  */
-Gamepad.prototype.getGamepadOrigin = gamepad.getGamepadOrigin = function () {
+MobileGamepad.prototype.getGamepadOrigin = function () {
   // This is a function instead of a property, because this element could be
   // injected after this script is loaded but before the origin is retrieved.
   var dataOrigin = document.querySelector('[data-gamepad-origin]');
@@ -99,7 +108,7 @@ Gamepad.prototype.getGamepadOrigin = gamepad.getGamepadOrigin = function () {
  * @returns {Promise}
  * @memberOf Gamepad
  */
-Gamepad.prototype._reverse_url = function (routeName) {
+MobileGamepad.prototype._reverse_url = function (routeName) {
   if (!(routeName in routes)) {
     throw 'No route matches for that name: ' + routeName;
   }
@@ -121,7 +130,7 @@ Gamepad.prototype._reverse_url = function (routeName) {
  * @returns {Promise}
  * @memberOf Gamepad
  */
-Gamepad.prototype._pair = function (peerKey) {
+MobileGamepad.prototype._pair = function (peerKey) {
   return new Promise(function (resolve, reject) {
     if (!peerKey) {
       peerKey = utils.getPeerKey();  // The host key.
@@ -212,6 +221,7 @@ Gamepad.prototype._pair = function (peerKey) {
               trace('[' + peer.address + '] Received new controller state ' +
                 'from peer: ' +
                 (typeof msg === 'object' ? JSON.stringify(msg) : msg));
+              // TODO: Emit new `statechange` event!
               return this._updateState(msg.data);
             default:
               return warn('[' + peer.address + '] Received peer message of ' +
@@ -268,7 +278,7 @@ Gamepad.prototype._pair = function (peerKey) {
  * @returns {Promise}
  * @memberOf Gamepad
  */
-Gamepad.prototype.pair = function (peerKey) {
+MobileGamepad.prototype.pair = function (peerKey) {
   return new Promise(function (resolve, reject) {
     trace('Pairing started');
 
@@ -312,6 +322,7 @@ Gamepad.prototype.pair = function (peerKey) {
 
     return this._pair(peerKey).then(function (peer) {
       trace('[' + peer.address + '] Paired to controller');
+      this.connected = true;
     }.bind(this)).then(function () {
       this.modal.close();
     }.bind(this)).catch(function (err) {
@@ -327,20 +338,33 @@ Gamepad.prototype.pair = function (peerKey) {
  * @private
  * @memberOf Gamepad
  */
-Gamepad.prototype._updateState = function (data) {
-  this.state = data;
-
+MobileGamepad.prototype._updateState = function (data) {
   Object.keys(data || {}).forEach(function (key) {
     if (!this.state[key] && data[key]) {
       // Button pushed.
-      this._emit('buttondown', key);
-      this._emit('buttondown.' + key, key);
+      this.emitter.emit('buttondown', key);
+      this.emitter.emit('buttondown.' + key, key);  // TODO: Don't send two
+
+      // Button pressed.
+      this.emitter.emit('buttonpress', key);
+      this.emitter.emit('buttonpress.' + key, key);
+
+      // Button changed.
+      this.emitter.emit('buttonchange', key);
+      this.emitter.emit('buttonchange.' + key, true);
     } else if (this.state[key] && !data[key]) {
       // Button released.
-      this._emit('buttonup', key);
-      this._emit('buttonup.' + key, key);
+      this.emitter.emit('buttonup', key);
+      this.emitter.emit('buttonup.' + key, key);
+
+      // Button changed.
+      this.emitter.emit('buttonchange', key);
+      this.emitter.emit('buttonchange.' + key, false);
     }
   }.bind(this));
+
+  this.state = data;
+  this.emitter.emit('statechange');
 };
 
 
@@ -350,30 +374,13 @@ Gamepad.prototype._updateState = function (data) {
  * @returns {Promise}
  * @memberOf Gamepad
  */
-Gamepad.prototype.hidePairingScreen = function () {
+MobileGamepad.prototype.hidePairingScreen = function () {
   this.modal.close();
 };
 
 
 /**
- * Fire an internal event with given data.
- *
- * @private
- * @method _fire
- * @param {String} eventName Name of event to fire (e.g., `buttondown`).
- * @param {*} data Data to pass to the listener.
- */
-Gamepad.prototype._emit = function (eventName, data) {
-  // TODO: Handle proper event emission (#44).
-  trace('Emit "' + eventName + '": ' + data);
-  // (this.listeners[eventName] || []).forEach(function (listener) {
-  //   listener.apply(listener, [data]);
-  // });
-};
-
-
-/**
- * Bind a listener to a gamepad event.
+ * Bind an event listener listener to a gamepad event.
  *
  * @private
  * @method bind
@@ -381,57 +388,56 @@ Gamepad.prototype._emit = function (eventName, data) {
  * @param {Function} listener Listener to call when given event occurs.
  * @return {Gamepad} Self
  */
-Gamepad.prototype._bind = function (eventName, listener) {
-  if (typeof(this.listeners[event]) === 'undefined') {
-    this.listeners[event] = [];
-  }
-
-  this.listeners[event].push(listener);
-
+MobileGamepad.prototype.on = function () {
+  this.emitter.on.apply(this.emitter, arguments);
   return this;
 };
 
+MobileGamepad.prototype.addListener = MobileGamepad.prototype.on;
+
 
 /**
- * Remove listener of given type.
+ * Remove an event listener of a given type.
  *
  * If no type is given, all listeners are removed. If no listener is given, all
  * listeners of given type are removed.
  *
  * @method unbind
- * @param {String} [type] Type of listener to remove.
+ * @param {String} [eventName] Event name of listener to remove.
  * @param {Function} [listener] (Optional) The listener function to remove.
  * @return {Boolean} Was unbinding the listener successful.
  */
-Gamepad.prototype.unbind = function (eventName, listener) {
-  // Remove everything for all event types.
-  if (typeof eventName === 'undefined') {
-    this.listeners = {};
-    return;
+MobileGamepad.prototype.off = function () {
+  if (arguments.length < 2) {
+    // If no listener function is provided, remove all events of this type.
+    this.removeAllListeners.apply(this, arguments);
+    return this;
   }
 
-  // Remove all listener functions for that event type.
-  if (typeof listener === 'undefined') {
-    this.listeners[eventName] = [];
-    return;
-  }
+  this.emitter.removeListener.apply(this.emitter, arguments);
+  return this;
+};
 
-  if (typeof this.listeners[eventName] === 'undefined') {
-    return false;
-  }
+MobileGamepad.prototype.removeListener = MobileGamepad.prototype.off;
 
-  this.listeners[eventName].forEach(function (value, idx) {
-    // Remove only the listener function passed to this method.
-    if (value === listener) {
-      this.listeners[eventName].splice(idx, 1);
-      return true;
-    }
-  });
 
-  return false;
+/**
+ * Remove all event listeners.
+ *
+ * If no type is given, all listeners are removed. If no listener is given, all
+ * listeners of given type are removed.
+ *
+ * @method unbind
+ * @param {String} [eventName] Event name of listener to remove.
+ * @param {Function} [listener] (Optional) The listener function to remove.
+ * @return {Boolean} Was unbinding the listener successful.
+ */
+MobileGamepad.prototype.removeAllListeners = function () {
+  this.emitter.removeAllListeners.apply(this.emitter, arguments);
+  return this;
 };
 
 
-module.exports = gamepad;
+module.exports = MobileGamepad;
 
 })(window, document);
