@@ -400,6 +400,7 @@ function bindKeyPresses(eventName, isPressed) {
         }
     }
 
+    e.preventDefault();
     send({type: 'state', data: gamepadState});
 
     // Any button press puts controller in fullscreen, since requesting
