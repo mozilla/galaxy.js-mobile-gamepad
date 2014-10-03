@@ -160,15 +160,15 @@ function connect() {
     });
 
     window.addEventListener('beforeunload', function () {
-      // Close WebSocket connection to signalling server.
-      link.onramp.close();
-      trace('Closed connection to signalling server');
-
-      // Workaround because `RTCPeerConnection.onclose` ain't work in browsers:
+      // Workaround for `RTCPeerConnection.onclose` browser bugs:
       // * https://code.google.com/p/webrtc/issues/detail?id=1676
       // * https://bugzilla.mozilla.org/show_bug.cgi?id=881337
       // * https://bugzilla.mozilla.org/show_bug.cgi?id=1009124
       send({type: 'bye'});
+
+      // Close WebSocket connection to signalling server.
+      link.onramp.close();
+      trace('Closed connection to signalling server');
     });
   });
 }
