@@ -151,18 +151,20 @@ Gamepad.prototype._pair = function (peerKey) {
     // `open` event listener.
     //
     // Or "use key" if controller is already online.
-    link.setKey(peerKey).then(function () {
-      trace('Sent message to signalling server: ' +
-        JSON.stringify({type: 'set key', key: peerKey}));
-    }).catch(function (err) {
-      warn('Controller is already online; "set key" message rejected by ' +
-        'signalling server: ' + err);
-
-      link.useKey(peerKey).then(function () {
+    link.on('open', function () {
+      link.setKey(peerKey).then(function () {
         trace('Sent message to signalling server: ' +
-          JSON.stringify({type: 'use key', key: peerKey}));
+          JSON.stringify({type: 'set key', key: peerKey}));
       }).catch(function (err) {
-        error('Failed to send "use key" mesage to signalling server: ' + err);
+        warn('Controller is already online; "set key" message rejected by ' +
+          'signalling server: ' + err);
+
+        link.useKey(peerKey).then(function () {
+          trace('Sent message to signalling server: ' +
+            JSON.stringify({type: 'use key', key: peerKey}));
+        }).catch(function (err) {
+          error('Failed to send "use key" mesage to signalling server: ' + err);
+        });
       });
     });
 
