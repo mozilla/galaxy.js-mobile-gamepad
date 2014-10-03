@@ -30,8 +30,15 @@ body {
   overflow: hidden;
 }
 
-.button {
+:focus {
   outline: none;
+}
+
+::-moz-focus-inner {
+  border: 0;
+}
+
+.button {
   transition: all .05s ease;
 }
 
