@@ -8,7 +8,7 @@
     <script src="../js/external/promise-1.0.0.js"></script>
     <script src="../js/host.bundle.js"></script>
     <script>
-      var pad = gamepad.init();
+      var pad = MobileGamepad.create();
 
       pad.pair().then(function (controller) {
         console.log('Connected to controller');
