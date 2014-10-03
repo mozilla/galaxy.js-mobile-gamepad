@@ -24,7 +24,7 @@ function debug(msg) {
 
 
 function wantsAutoFullscreen() {
-  if (!settings.CONTROLLER_AUTO_FULLSCREEN) {
+  if (!settings.GAMEPAD_AUTO_FULLSCREEN) {
     return false;
   }
   return !('disableAutoFullscreen' in localStorage);
@@ -399,7 +399,7 @@ function bindKeyPresses(eventName, isPressed) {
           selectButton.dataset.pressed = +isPressed;
 
           // Pressing the SELECT button can reload the page.
-          if (settings.CONTROLLER_SELECT_RELOAD) {
+          if (settings.GAMEPAD_SELECT_RELOAD) {
             return window.location.reload();
           }
 
@@ -442,7 +442,7 @@ bindKeyPresses('keyup', false);
 
 selectButton.addEventListener('click', function () {
   // Pressing the SELECT button can reload the page.
-  if (settings.CONTROLLER_SELECT_RELOAD) {
+  if (settings.GAMEPAD_SELECT_RELOAD) {
     return window.location.reload();
   }
 
