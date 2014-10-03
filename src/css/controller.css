@@ -505,7 +505,7 @@ body {
   }
 }
 
-.debug {
+.debug:not(:empty) {
   background: rgba(255,100,255,.2);
   -moz-column-count: 5;
   -webkit-column-count: 5;
