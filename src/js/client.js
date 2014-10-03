@@ -14,6 +14,15 @@ var warn = utils.warn;
 utils.polyfill();
 
 
+function debug(msg) {
+  if (!settings.DEBUG) {
+    return;
+  }
+
+  document.querySelector('.debug').innerHTML += (msg + '\n');
+}
+
+
 function wantsAutoFullscreen() {
   if (!settings.CONTROLLER_AUTO_FULLSCREEN) {
     return false;

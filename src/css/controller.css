@@ -156,8 +156,10 @@ body {
   z-index: 1;
 }
 
-.dpad-pane:after,.dpad-hole:after {
+.dpad-pane:after,
+.dpad-hole:after {
   transform: rotate(90deg);
+  -moz-transform: rotate(90deg);
 }
 
 #dpad {
@@ -501,4 +503,26 @@ body {
     min-width: 36.5em;
     width: 36.5em;
   }
+}
+
+.debug {
+  background: rgba(255,100,255,.2);
+  -moz-column-count: 5;
+  -webkit-column-count: 5;
+  column-count: 5;
+  -moz-column-gap: .5em;
+  -webkit-column-gap: .5em;
+  column-gap: .5em;
+  color: #fff;
+  font: 300 28px/1 monospace;
+  height: 100%;
+  left: 0;
+  max-height: 320px;
+  padding: .5em;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  white-space: pre;
+  width: 100%;
+  z-index: 3;
 }
