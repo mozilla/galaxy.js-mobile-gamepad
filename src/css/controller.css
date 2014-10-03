@@ -90,11 +90,13 @@ body {
   font: 15px/2 NESController, sans-serif;
   height: 17.5em;
   margin: 20px auto;
+  max-width: 40em;
+  min-width: 38em;
+  position: relative;
   -moz-user-select: none;
   -ms-user-select: none;
   -webkit-user-select: none;
   user-select: none;
-  width: 40em;
 }
 
 .cord {
@@ -103,7 +105,7 @@ body {
   height: 3em;
   margin-left: 10em;
   position: absolute;
-  top: -1em;
+  top: -3.35em;
   width: 1.1em;
 }
 
@@ -454,3 +456,54 @@ body {
   left: .35rem;
   top: .4rem;
 }
+
+/* "responsive" */
+
+@media (max-width: 600px) {
+  .action-pane {
+    margin-left: .75em;
+  }
+}
+
+/* Firefox OS Flame landscape */
+@media (max-width: 580px) {
+  .action-pane {
+    margin-left: .5em;
+  }
+
+  .menu-pane {
+    width: 11em;
+  }
+
+  #pad-traditional {
+    left: 0;
+    min-width: 37em;
+    position: absolute;
+    top: .75em;
+    width: 37em;
+  }
+
+  .cord {
+    top: -3.325em;
+  }
+}
+
+@media (max-width: 550px) {
+  .action-pane {
+    margin-left: .25em;
+  }
+
+  .menu-pane {
+    width: 10.75em;
+  }
+
+  #pad-traditional {
+    min-width: 36.5em;
+    width: 36.5em;
+  }
+}
+
+/*
+  max-width: 40em;
+  min-width: 38em;
+*/
