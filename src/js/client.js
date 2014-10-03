@@ -14,42 +14,30 @@ var warn = utils.warn;
 utils.polyfill();
 
 
-utils.lockOrientation('landscape-primary');
-
-
-function wantsAutoFullScreen() {
-  return !('disableAutoFullScreen' in localStorage);
+function wantsAutoFullscreen() {
+  if (!settings.CONTROLLER_AUTO_FULLSCREEN) {
+    return false;
+  }
+  return !('disableAutoFullscreen' in localStorage);
 }
 
 
 document.addEventListener('keyup', function (e) {
-  if (utils.fieldFocused(e)) {
+  if (utils.fieldFocused(e) || !wantsAutoFullscreen()) {
     return;
   }
 
   switch (e.keyCode) {
     case 70:  // Pressing F should toggle full-screen mode.
-      trace('User pressed "F"; entering/exiting fullscreen');
-      delete localStorage.disableAutoFullScreen;
-      return utils.toggleFullScreen();
+      trace('User pressed "F"; entering/exiting Fullscreen');
+      delete localStorage.disableAutoFullscreen;
+      return utils.toggleFullscreen();
     case 78:  // Pressing NF (really just N) should toggle full-screen mode.
-      trace('User pressed "NF"; exiting fullscreen and will not ' +
+      trace('User pressed "NF"; exiting Fullscreen and will not ' +
         'automatically open next time');
-      localStorage.disableAutoFullScreen = '1';
-      return utils.toggleFullScreen();
+      localStorage.disableAutoFullscreen = '1';
+      return utils.toggleFullscreen();
   }
-});
-
-
-document.addEventListener('click', function (e) {
-  // Bail if input is focussed, if we have autofocus disabled, or
-  // if we're already fullscreen.
-  if (utils.fieldFocused(e) || !wantsAutoFullScreen() ||
-      utils.isFullScreen()) {
-    return;
-  }
-  trace('Automatically entering fullscreen');
-  utils.toggleFullScreen();
 });
 
 
@@ -315,13 +303,21 @@ var gamepadState = {
 function bindPress(button, eventName, isPressed) {
   document.querySelector('#' + button)
     .addEventListener(eventName, function (e) {
-      // Handle D-pad presses.
+      // Add special class only when D-pad is pressed.
       if (e.target && e.target.parentNode === dpad) {
         dpad.classList.toggle(this.id);
       }
 
+      // Update button state.
       gamepadState[button] = isPressed;
       send({type: 'state', data: gamepadState});
+
+      // Any button press puts controller in fullscreen, since requesting
+      // fullscreen must be bound to a user action (e.g., a click/keypress).
+      // As a Firefox app, we set the `fullscreen` in the manifest.
+      if (wantsAutoFullscreen()) {
+        utils.requestFullscreen();
+      }
     });
 }
 
@@ -388,6 +384,16 @@ function bindKeyPresses(eventName, isPressed) {
           // If the Shift key was pressed or unpressed, toggle its state.
           gamepadState.select = isPressed;
           selectButton.dataset.pressed = +isPressed;
+
+          // Pressing the SELECT button can reload the page.
+          if (settings.CONTROLLER_SELECT_RELOAD) {
+            return window.location.reload();
+          }
+
+          // Pressing the SELECT button can exit fullscreen mode.
+          if (wantsAutoFullscreen()) {
+            utils.toggleFullscreen();
+          }
         } else {
           // Otherwise (i.e., any other key was pressed), bail.
           return;
@@ -395,6 +401,13 @@ function bindKeyPresses(eventName, isPressed) {
     }
 
     send({type: 'state', data: gamepadState});
+
+    // Any button press puts controller in fullscreen, since requesting
+    // fullscreen must be bound to a user action (e.g., a click/keypress).
+    // As a Firefox app, we set the `fullscreen` in the manifest.
+    if (wantsAutoFullscreen()) {
+      utils.requestFullscreen();
+    }
   });
 }
 
@@ -413,5 +426,16 @@ Object.keys(gamepadState).forEach(function (button) {
 bindKeyPresses('keydown', true);
 bindKeyPresses('keyup', false);
 
+selectButton.addEventListener('click', function () {
+  // Pressing the SELECT button can reload the page.
+  if (settings.CONTROLLER_SELECT_RELOAD) {
+    return window.location.reload();
+  }
+
+  // Pressing the SELECT button can exit fullscreen mode.
+  if (wantsAutoFullscreen()) {
+    utils.toggleFullscreen();
+  }
+});
 
 })(window, document);

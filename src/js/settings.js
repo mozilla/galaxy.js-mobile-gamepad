@@ -25,7 +25,14 @@ var settings = {
   DEBUG: false,
 
   // Version of the `gamepad.js` script
-  VERSION: '0.0.1'
+  VERSION: '0.0.1',
+
+  // Upon any button press, open the controller in fullscreen in a browser.
+  // (`true` allows "automatic" fullscreen.)
+  CONTROLLER_AUTO_FULLSCREEN: true,
+
+  // Upon pressing the controller's SELECT button, reload the page in browser.
+  CONTROLLER_SELECT_RELOAD: false
 };
 
 // Override each default setting with user-defined setting.

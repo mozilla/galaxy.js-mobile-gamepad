@@ -11,6 +11,7 @@
   "launch_path": "/client.html?4765",
   "name": "Galaxy Pad",
   "type": "web",
+  "fullscreen": "true",
   "orientation": "landscape-primary",
   "version": "hosted-version"
 }
