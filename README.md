@@ -6,6 +6,8 @@ Used in conjunction with [galaxy.js](https://github.com/mozilla/galaxy.js).
 
 > __Note:__ This project is not ready for prime time. Not an official Mozilla project. Pre-alpha everything. Anything and everything at your own risk.
 
+![screenshot of NES-inspired gamepad](src/img/gamepad-traditional-screenshot.png "screenshot of NES-inspired gamepad")
+
 
 ## Downloads
 
