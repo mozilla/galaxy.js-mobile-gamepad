@@ -147,4 +147,6 @@ Several files will be written to the `dist/` directory, including the main appli
 
 ## Credits
 
+* [Albin Larsson](http://codepen.io/fullkornslimpa/) (unauthorized use of [HTML5 Nintendo™ controller CodePen](http://codepen.io/fullkornslimpa/pen/jxiHd/))
 * [Ivan Prieto Garrido](https://dribbble.com/shots/1240163-Nintendo-controler-flat-icon-ios7) (unauthorised, temporary use of Nintendo™ controller flat icon for webapp icon; will replace before project is official)
+
