@@ -29,22 +29,58 @@ Used in conjunction with [galaxy.js](https://github.com/mozilla/galaxy.js).
 1. On the static server, open `client.html` (which will load `gamepad-client.min.js`).
 2. In your game, insert this script:
 
-        <script src="{static_server}/gamepad-host.min.js">
+    ```js
+    <script src="{static_server}/gamepad-host.min.js">
+    ```
 
-3. Add a few lines to your game for pairing the gamepad and getting its state. Refer to the [examples](src/examples):
+3. Add a few lines to your game for pairing the gamepad, getting its state, and adding event listeners. Refer to the [sample games](src/examples) for more complete examples. Below is some code to get you started:
 
-        var pad = gamepad.init();
+    ```js
+    var pad = Gamepad.create();
 
-        pad.pair().then(function (controller) {
-          console.log('Connected to controller');
-        }).catch(function (e) {
-          console.trace(e.stack ? e.stack : e);
-        });
+    pad.pair().then(function (controllerPeer) {
+      console.log('Connected to controller');
+    }).then(initControls).catch(function (e) {
+      console.trace(e.stack ? e.stack : e);
+    });
 
-        window.requestAnimationFrame(function () {
-          // In your game loop check `pad.state`, or you can listen to events.
-        });
+    function initControls() {
+      window.requestAnimationFrame(function () {
+        // In your game loop check `pad.state`, or you can listen to events.
+      });
 
+      pad.on('buttonpress', function (key) {
+        // Some button pressed.
+      }).on('buttondown', function (key) {
+        // Some button pushed down.
+      }).on('buttonup', function (key) {
+        // Some button released.
+      }).on('buttonchange', function (key, isPressed) {
+        // Some button changed.
+      });
+
+      pad.on('buttonpress.select', function (key) {
+        // SELECT button pressed.
+      }).on('buttondown.select', function (key) {
+        // SELECT button pushed down.
+      }).on('buttonup.select', function (key) {
+        // SELECT button released.
+      }).on('buttonchange.select', function (key, isPressed) {
+        // SELECT button changed.
+      });
+    }
+
+    // Totally optional, but when the user stops playing your game,
+    // for example, you can call `destroyControls` to remove any event
+    // listeners you have set.
+    function destroyControls() {
+      // Remove event listener for a particular listener function.
+      pad.off('buttonpress', buttonpressHandler);
+
+      // Remove all event listeners for a particular event type.
+      pad.off('buttonpress');
+    }
+    ```
 
 ## Develop
 
