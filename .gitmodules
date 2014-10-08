@@ -1,0 +1,3 @@
+[submodule "src/examples/FullScreenMario"]
+	path = src/examples/FullScreenMario
+	url = git@github.com:cvan/FullScreenMario.git
