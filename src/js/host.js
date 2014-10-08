@@ -350,7 +350,7 @@ MobileGamepad.prototype._updateState = function (data) {
       this.emitter.emit('buttonpress.' + key, key);
 
       // Button changed.
-      this.emitter.emit('buttonchange', key);
+      this.emitter.emit('buttonchange', key, true);
       this.emitter.emit('buttonchange.' + key, true);
     } else if (this.state[key] && !data[key]) {
       // Button released.
@@ -358,7 +358,7 @@ MobileGamepad.prototype._updateState = function (data) {
       this.emitter.emit('buttonup.' + key, key);
 
       // Button changed.
-      this.emitter.emit('buttonchange', key);
+      this.emitter.emit('buttonchange', key, false);
       this.emitter.emit('buttonchange.' + key, false);
     }
   }.bind(this));
