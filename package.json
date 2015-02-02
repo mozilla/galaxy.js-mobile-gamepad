@@ -18,7 +18,8 @@
     "gulp-uglify": "^1.0.1",
     "jshint-stylish": "^0.4.0",
     "uglifyify": "^2.5.0",
-    "vinyl-source-stream": "^1.0.0"
+    "vinyl-source-stream": "^1.0.0",
+    "when": "^3.7.2"
   },
   "engines": {
     "node": ">=0.10.x",
